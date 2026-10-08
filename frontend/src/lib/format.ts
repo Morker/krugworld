@@ -47,3 +47,33 @@ export function percent(part: number, whole: number): number {
   if (whole <= 0) return 0
   return Math.max(0, Math.min(100, (part / whole) * 100))
 }
+
+/** A local calendar date as YYYY-MM-DD. */
+export function iso(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+export function parseDate(date: string): Date {
+  const [y, m, d] = date.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+export function addDays(date: string, n: number): string {
+  const d = parseDate(date)
+  d.setDate(d.getDate() + n)
+  return iso(d)
+}
+
+/** "Today", "Tomorrow", "in 3 days" or a short date. */
+export function relativeDay(date: string): string {
+  const diff = Math.round((parseDate(date).getTime() - parseDate(today()).getTime()) / 86_400_000)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Tomorrow'
+  if (diff > 1 && diff < 7) return `in ${diff} days`
+  return dayLabel(date)
+}
+
+/** "14:30:00" -> "14:30". */
+export function time(t: string | null): string {
+  return t ? t.slice(0, 5) : ''
+}

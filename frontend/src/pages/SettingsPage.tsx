@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { IconCheck, IconLogout, IconUpload } from '@tabler/icons-react'
 import { useLogout, useMe, useSavePreferences, useTavernImport } from '../api/hooks'
 import type { Skin, Theme } from '../api/types'
@@ -51,6 +52,7 @@ export function SettingsPage() {
           <ErrorLine error={save.error} />
         </Panel>
 
+        <WeatherSettings />
         <TavernImport />
       </div>
     </>
@@ -91,7 +93,8 @@ function TavernImport() {
       <ol className="small muted" style={{ paddingLeft: 18, margin: '0 0 12px' }}>
         <li>Log in to Krugger's Tavern in this browser.</li>
         <li>Open <a href="https://tavern.veteryr.online/api/kv" target="_blank" rel="noreferrer">tavern.veteryr.online/api/kv</a> and save the page (Ctrl+S) as a .json file.</li>
-        <li>Choose that file here. Your ledger goes into a new "Tavern purse" account, and standing dues become recurring entries.</li>
+        <li>Choose that file here. Everything comes across: the ledger (into a new "Tavern purse" account), standing dues
+          (as recurring entries), the almanac, the feast log, training and the workshop board.</li>
       </ol>
       <label className="btn" style={{ cursor: 'pointer' }}>
         <IconUpload size={18} aria-hidden="true" /> {run.isPending ? 'Importing…' : 'Choose file'}
@@ -101,11 +104,88 @@ function TavernImport() {
       <ErrorLine error={run.error} />
       {done && (
         <p role="status">
-          Imported {done.entries} entries and {done.recurring} recurring dues
+          Imported {done.entries} ledger entries, {done.recurring} recurring dues, {done.events} events,
+          {' '}{done.meals} meals, {done.workouts} workouts and {done.ideas} ideas
           {done.categoriesCreated > 0 && `, with ${done.categoriesCreated} new categories`}
           {done.skipped > 0 && ` (${done.skipped} unreadable rows skipped)`}.
         </p>
       )}
+    </Panel>
+  )
+}
+
+type Found = { name: string; admin1?: string; country?: string; latitude: number; longitude: number }
+
+/** Where the Hall's weather is for: search a place (Open-Meteo, no key) or use this device's location. */
+function WeatherSettings() {
+  const me = useMe().data
+  const save = useSavePreferences()
+  const [query, setQuery] = useState('')
+  const [found, setFound] = useState<Found[] | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  async function search(e: FormEvent) {
+    e.preventDefault()
+    if (!query.trim()) return
+    setProblem(null)
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?count=5&name=${encodeURIComponent(query.trim())}`)
+      const json = await res.json()
+      setFound(json.results ?? [])
+    } catch {
+      setProblem('Could not search places right now.')
+    }
+  }
+
+  function choose(place: string, lat: number, lon: number) {
+    save.mutate({ weather: { place, lat: Number(lat.toFixed(5)), lon: Number(lon.toFixed(5)) } })
+    setFound(null)
+    setQuery('')
+  }
+
+  function here() {
+    setProblem(null)
+    if (!navigator.geolocation) return setProblem('This browser cannot share its location.')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => choose('Your location', pos.coords.latitude, pos.coords.longitude),
+      () => setProblem('Location was not shared. Search for your city instead.'),
+      { timeout: 8000 },
+    )
+  }
+
+  if (!me) return null
+  return (
+    <Panel title="Weather">
+      <p className="small muted" style={{ marginTop: 0 }}>
+        {me.weather ? <>Showing the skies over <b>{me.weather.place}</b>.</> : 'No place set yet.'}
+      </p>
+      <form onSubmit={search} className="row-start">
+        <input aria-label="Search a place" placeholder="Kuala Lumpur" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <button type="submit">Search</button>
+      </form>
+      {found && found.length === 0 && <p className="small muted">No such place found.</p>}
+      {found && found.length > 0 && (
+        <div className="list" style={{ marginTop: 6 }}>
+          {found.map((f) => {
+            const label = [f.name, f.admin1, f.country].filter(Boolean).join(', ')
+            return (
+              <button key={`${f.latitude},${f.longitude}`} className="ghost" style={{ justifyContent: 'flex-start' }}
+                      onClick={() => choose(label, f.latitude, f.longitude)}>{label}</button>
+            )
+          })}
+        </div>
+      )}
+      <div className="row-start wrap" style={{ marginTop: 10 }}>
+        <button onClick={here}>Use my location</button>
+        {me.weather && <button className="ghost" onClick={() => save.mutate({ weather: { place: '' } })}>Clear</button>}
+        <span style={{ flex: 1 }} />
+        <div className="segmented" role="group" aria-label="Temperature unit">
+          <button aria-pressed={me.tempUnit === 'C'} onClick={() => save.mutate({ tempUnit: 'C' })}>°C</button>
+          <button aria-pressed={me.tempUnit === 'F'} onClick={() => save.mutate({ tempUnit: 'F' })}>°F</button>
+        </div>
+      </div>
+      {problem && <p className="field-error" role="alert">{problem}</p>}
+      <ErrorLine error={save.error} />
     </Panel>
   )
 }

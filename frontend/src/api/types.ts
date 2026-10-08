@@ -5,7 +5,16 @@
 export type Skin = 'classic' | 'modern'
 export type Theme = 'steel' | 'oak' | 'forest' | 'parchment'
 
-export type Me = { id: number; username: string; skin: Skin; theme: Theme }
+export type WeatherPlace = { place: string; lat: number; lon: number }
+export type Me = {
+  id: number
+  username: string
+  skin: Skin
+  theme: Theme
+  calorieGoal: number
+  tempUnit: 'C' | 'F'
+  weather: WeatherPlace | null
+}
 
 export type AccountKind = 'BANK' | 'CASH' | 'EWALLET' | 'CARD' | 'OTHER'
 export type Account = {
@@ -113,4 +122,56 @@ export type CharacterSheet = {
   loot: Entry[]
 }
 
-export type ImportResult = { entries: number; recurring: number; categoriesCreated: number; skipped: number }
+export type ImportResult = {
+  entries: number
+  recurring: number
+  categoriesCreated: number
+  events: number
+  meals: number
+  workouts: number
+  ideas: number
+  skipped: number
+}
+
+// ---------------- life ----------------
+
+export type CalendarEvent = { id: number; occursOn: string; atTime: string | null; title: string }
+
+export type IdeaStatus = 'TODO' | 'DOING' | 'DONE'
+export type Idea = { id: number; title: string; notes: string; status: IdeaStatus; updatedAt: string }
+
+export type Meal = { id: number; name: string; calories: number }
+export type MealDay = {
+  date: string
+  goal: number
+  total: number
+  meals: Meal[]
+  week: { date: string; calories: number }[]
+}
+
+export type Weekday = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY'
+export type Workout = {
+  id: number
+  name: string
+  days: Weekday[]
+  scheduled: boolean
+  done: boolean
+  streak: number
+  totalDone: number
+}
+
+export type LifeToday = {
+  date: string
+  calories: number
+  calorieGoal: number
+  workouts: { id: number; name: string; done: boolean }[]
+  upcoming: CalendarEvent[]
+  ideasInProgress: number
+  ideasWaiting: number
+}
+
+// ---------------- steward ----------------
+
+export type StewardStatus = { ready: boolean; provider: string; remaining: number; limit: number }
+export type StewardTurn = { role: 'user' | 'assistant'; text: string; subtitle?: string | null; error?: boolean }
+export type StewardReply = { reply: string; subtitle: string | null; remaining: number }

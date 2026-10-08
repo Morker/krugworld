@@ -4,12 +4,18 @@ import { IconArrowDownLeft, IconArrowUpRight, IconArrowsLeftRight, IconBolt, Ico
 import { useCharacter } from '../api/hooks'
 import type { CharacterSheet, Entry } from '../api/types'
 import { EntryForm } from '../components/EntryForm'
+import { MarketCard, TodayRow, WeatherCard } from '../components/HallWidgets'
 import { BadgeIcon, PlainIcon } from '../components/icons'
 import { Bar, Empty, ErrorLine, Loading, Money, Panel } from '../components/ui'
 import { useToast } from '../components/useToast'
 import { monthLabel, percent, signed, currentMonth } from '../lib/format'
 
-/** The dashboard: your finances as an RPG character sheet. */
+function greeting(): string {
+  const h = new Date().getHours()
+  return h < 5 ? 'Burning the midnight oil' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+}
+
+/** The dashboard: your life as an RPG character sheet. */
 export function HallPage() {
   const { data: sheet, error, isLoading } = useCharacter()
   const [adding, setAdding] = useState(false)
@@ -23,11 +29,16 @@ export function HallPage() {
       <div className="page-head">
         <div>
           <h1>The Hall</h1>
-          <div className="sub">The ledger of {sheet.username} · {monthLabel(currentMonth())}</div>
+          <div className="sub">{greeting()}, {sheet.username} · {monthLabel(currentMonth())}</div>
         </div>
         <button className="primary" onClick={() => setAdding(true)}>
           <IconPlus size={18} aria-hidden="true" /> Log entry
         </button>
+      </div>
+
+      <div className="grid grid-2" style={{ marginBottom: 14 }}>
+        <WeatherCard />
+        <MarketCard />
       </div>
 
       <div className="grid sheet">
@@ -42,6 +53,8 @@ export function HallPage() {
         <StreakCard sheet={sheet} />
         <LootLog loot={sheet.loot} />
       </div>
+
+      <TodayRow />
 
       {adding && (
         <EntryForm onClose={() => setAdding(false)} onSaved={(isNew) => isNew && showToast('Logged · +5 XP')} />

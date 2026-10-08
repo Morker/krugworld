@@ -1,5 +1,8 @@
 import {
+  IconBarbell,
+  IconBowl,
   IconBriefcase,
+  IconBulb,
   IconCar,
   IconCoffee,
   IconCoin,
@@ -55,6 +58,9 @@ const BADGE_ICONS: Record<string, Icon> = {
   moon: IconMoon,
   coins: IconCoins,
   crown: IconCrown,
+  bowl: IconBowl,
+  barbell: IconBarbell,
+  bulb: IconBulb,
 }
 
 export function CategoryIcon({ icon, color, size = 18 }: { icon: string; color: string; size?: number }) {

@@ -82,9 +82,18 @@ export function useLogout() {
 export function useSavePreferences() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (prefs: { skin?: Skin; theme?: Theme }) =>
+    mutationFn: (prefs: {
+      skin?: Skin
+      theme?: Theme
+      calorieGoal?: number
+      tempUnit?: 'C' | 'F'
+      weather?: { place: string; lat?: number; lon?: number }
+    }) =>
       api<Me>('/api/auth/me/preferences', { method: 'PATCH', json: prefs }),
-    onSuccess: (me) => qc.setQueryData(['me'], me),
+    onSuccess: (me) => {
+      qc.setQueryData(['me'], me)
+      return qc.invalidateQueries({ queryKey: ['meals'] })
+    },
   })
 }
 
