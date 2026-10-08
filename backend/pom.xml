@@ -42,6 +42,10 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
 
     <!-- Flyway owns the schema: every table change is a numbered SQL file in
          src/main/resources/db/migration, applied once, in order, and recorded.
@@ -63,6 +67,12 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Lets tests act as a logged-in user and attach CSRF tokens. -->
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-test</artifactId>
       <scope>test</scope>
     </dependency>
     <!-- Testcontainers: a real, throwaway PostgreSQL in Docker for tests.
