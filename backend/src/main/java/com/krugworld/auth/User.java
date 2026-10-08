@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -28,6 +29,21 @@ public class User {
 
     @Column(nullable = false, length = 20)
     private String theme = "steel";
+
+    @Column(name = "calorie_goal", nullable = false)
+    private int calorieGoal = 2000;
+
+    @Column(name = "weather_place", length = 120)
+    private String weatherPlace;
+
+    @Column(name = "weather_lat", precision = 8, scale = 5)
+    private BigDecimal weatherLat;
+
+    @Column(name = "weather_lon", precision = 8, scale = 5)
+    private BigDecimal weatherLon;
+
+    @Column(name = "temp_unit", nullable = false, length = 1)
+    private String tempUnit = "C";
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -66,6 +82,41 @@ public class User {
 
     public void setTheme(String theme) {
         this.theme = theme;
+    }
+
+    public int getCalorieGoal() {
+        return calorieGoal;
+    }
+
+    public void setCalorieGoal(int calorieGoal) {
+        this.calorieGoal = calorieGoal;
+    }
+
+    public String getWeatherPlace() {
+        return weatherPlace;
+    }
+
+    public BigDecimal getWeatherLat() {
+        return weatherLat;
+    }
+
+    public BigDecimal getWeatherLon() {
+        return weatherLon;
+    }
+
+    /** Place name and coordinates move together: all set, or all cleared. */
+    public void setWeatherLocation(String place, BigDecimal lat, BigDecimal lon) {
+        this.weatherPlace = place;
+        this.weatherLat = lat;
+        this.weatherLon = lon;
+    }
+
+    public String getTempUnit() {
+        return tempUnit;
+    }
+
+    public void setTempUnit(String tempUnit) {
+        this.tempUnit = tempUnit;
     }
 
     public OffsetDateTime getCreatedAt() {

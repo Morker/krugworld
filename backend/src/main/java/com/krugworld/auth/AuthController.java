@@ -4,6 +4,10 @@ import com.krugworld.common.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -27,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
+
 /**
  * Registration, "who am I", and per-account preferences. Logging in and out
  * are handled by Spring Security itself — see {@link SecurityConfig}.
@@ -41,14 +47,29 @@ public class AuthController {
             @NotBlank @Size(min = 8, max = 100, message = "at least 8 characters") String password) {
     }
 
+    /** Every field is optional: send only what changes. */
     public record PreferencesRequest(
             @Pattern(regexp = "classic|modern") String skin,
-            @Pattern(regexp = "steel|oak|forest|parchment") String theme) {
+            @Pattern(regexp = "steel|oak|forest|parchment") String theme,
+            @Min(500) @Max(10000) Integer calorieGoal,
+            @Pattern(regexp = "[CF]") String tempUnit,
+            @Valid WeatherLocation weather) {
     }
 
-    public record Me(Long id, String username, String skin, String theme) {
+    /** Where the Hall's weather is for. An empty place clears it. */
+    public record WeatherLocation(
+            @Size(max = 120) String place,
+            @DecimalMin("-90") @DecimalMax("90") BigDecimal lat,
+            @DecimalMin("-180") @DecimalMax("180") BigDecimal lon) {
+    }
+
+    public record Me(Long id, String username, String skin, String theme, int calorieGoal, String tempUnit,
+                     WeatherLocation weather) {
         static Me of(User u) {
-            return new Me(u.getId(), u.getUsername(), u.getSkin(), u.getTheme());
+            WeatherLocation weather = u.getWeatherPlace() == null ? null
+                    : new WeatherLocation(u.getWeatherPlace(), u.getWeatherLat(), u.getWeatherLon());
+            return new Me(u.getId(), u.getUsername(), u.getSkin(), u.getTheme(), u.getCalorieGoal(),
+                    u.getTempUnit(), weather);
         }
     }
 
@@ -110,6 +131,20 @@ public class AuthController {
         }
         if (body.theme() != null) {
             user.setTheme(body.theme());
+        }
+        if (body.calorieGoal() != null) {
+            user.setCalorieGoal(body.calorieGoal());
+        }
+        if (body.tempUnit() != null) {
+            user.setTempUnit(body.tempUnit());
+        }
+        if (body.weather() != null) {
+            WeatherLocation w = body.weather();
+            boolean clear = w.place() == null || w.place().isBlank();
+            if (!clear && (w.lat() == null || w.lon() == null)) {
+                throw ApiException.badRequest("weather_incomplete", "A weather place needs its coordinates.");
+            }
+            user.setWeatherLocation(clear ? null : w.place().trim(), clear ? null : w.lat(), clear ? null : w.lon());
         }
         return Me.of(users.save(user));
     }

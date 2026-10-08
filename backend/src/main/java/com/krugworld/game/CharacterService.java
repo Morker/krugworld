@@ -139,9 +139,12 @@ public class CharacterService {
         }
     }
 
-    /** Consecutive days with at least one logged entry. Today still counts as "in progress". */
+    /**
+     * Consecutive days with any activity — an entry, a meal, a workout or a
+     * finished idea. Today still counts as "in progress".
+     */
     Streak streak(Long userId, LocalDate today) {
-        Set<LocalDate> days = new HashSet<>(xp.days(userId, XpLedger.ENTRY_LOGGED));
+        Set<LocalDate> days = new HashSet<>(xp.days(userId, XpLedger.ACTIVITY));
 
         LocalDate cursor = days.contains(today) ? today : today.minusDays(1);
         int current = 0;
@@ -172,8 +175,8 @@ public class CharacterService {
         boolean anyEntry = xp.any(userId, XpLedger.ENTRY_LOGGED);
         return List.of(
                 new Badge("first_coin", "First coin", "Log your first entry.", "coin", anyEntry),
-                new Badge("week_warrior", "Week warrior", "Log something 7 days in a row.", "flame", streak.longest() >= 7),
-                new Badge("iron_habit", "Iron habit", "Log something 30 days in a row.", "shield", streak.longest() >= 30),
+                new Badge("week_warrior", "Week warrior", "Be active 7 days in a row.", "flame", streak.longest() >= 7),
+                new Badge("iron_habit", "Iron habit", "Be active 30 days in a row.", "shield", streak.longest() >= 30),
                 new Badge("budget_keeper", "Budget keeper", "Finish a month within a budget.", "scale",
                         xp.any(userId, XpLedger.BUDGET_KEPT)),
                 new Badge("quest_complete", "Quest complete", "Reach a savings goal.", "trophy",
@@ -182,6 +185,9 @@ public class CharacterService {
                         hadNoSpendSunday(userId, today)),
                 new Badge("hoard", "Hoard of a thousand", "Hold RM 1,000 across your accounts.", "coins",
                         gold.compareTo(new BigDecimal("1000")) >= 0),
+                new Badge("first_feast", "First feast", "Log a meal.", "bowl", xp.any(userId, XpLedger.MEAL_LOGGED)),
+                new Badge("iron_body", "Iron body", "Finish 10 workouts.", "barbell", xp.count(userId, XpLedger.WORKOUT_DONE) >= 10),
+                new Badge("idea_smith", "Idea smith", "Finish an idea in the Workshop.", "bulb", xp.any(userId, XpLedger.IDEA_DONE)),
                 new Badge("adept", "Adept", "Reach level 5.", "crown", level >= 5));
     }
 
@@ -191,7 +197,7 @@ public class CharacterService {
      * abandoned account doesn't earn it by doing nothing.
      */
     private boolean hadNoSpendSunday(Long userId, LocalDate today) {
-        List<LocalDate> logged = xp.days(userId, XpLedger.ENTRY_LOGGED);
+        List<LocalDate> logged = xp.days(userId, List.of(XpLedger.ENTRY_LOGGED));
         if (logged.isEmpty()) {
             return false;
         }
