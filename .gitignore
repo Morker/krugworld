@@ -1,0 +1,19 @@
+# Backend
+backend/target/
+*.class
+
+# Frontend
+node_modules/
+frontend/dist/
+*.local
+
+# Editors / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Secrets
+.env
+.ssh/
+*.pem
