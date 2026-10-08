@@ -1,15 +1,40 @@
+import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { IconLogout } from '@tabler/icons-react'
 import { useLogout } from '../api/hooks'
+import { StewardDock } from '../steward/StewardDock'
 import { groupFor, NAV } from './nav'
+
+const DOCK_KEY = 'krugworld.dock-open'
+
+function readDock(): boolean {
+  try {
+    return localStorage.getItem(DOCK_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
 
 export function Layout() {
   const logout = useLogout()
   const { pathname } = useLocation()
   const current = groupFor(pathname)
+  // Remembered per browser: if you like Barnaby docked, he stays docked.
+  const [dockOpen, setDockOpen] = useState(readDock)
+  const onStewardPage = pathname.startsWith('/steward')
+  const docked = dockOpen && !onStewardPage
+
+  function toggleDock(open: boolean) {
+    setDockOpen(open)
+    try {
+      localStorage.setItem(DOCK_KEY, String(open))
+    } catch {
+      // not remembered, still works now
+    }
+  }
 
   return (
-    <div className="shell">
+    <div className={`shell ${docked ? 'docked' : ''}`}>
       {/* Desktop: grouped sidebar. Phones: the same element becomes a bottom bar of groups. */}
       <nav className="sidebar" aria-label="Main">
         <div className="brand">
@@ -53,6 +78,9 @@ export function Layout() {
         )}
         <Outlet />
       </main>
+
+      {/* The full Steward page already is the chat, so no dock there. */}
+      {!onStewardPage && <StewardDock open={docked} onToggle={toggleDock} />}
     </div>
   )
 }

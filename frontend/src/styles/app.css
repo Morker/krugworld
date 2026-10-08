@@ -306,6 +306,79 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
 .ticker { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
 .ticker .item { display: flex; flex-direction: column; }
 
+/* ---------- Barnaby: portrait, summon button, dock ---------- */
+
+.portrait { display: block; flex: 0 0 auto; image-rendering: pixelated; }
+.portrait .eyes, .portrait .mouth { transform-box: fill-box; transform-origin: center; }
+/* blinks every few seconds */
+.portrait .eyes { animation: blink 4.6s infinite; }
+@keyframes blink { 0%, 95%, 100% { opacity: 1; } 96.5% { opacity: 0; } }
+/* thinking: eyes roll up to the ceiling */
+.portrait.mood-thinking .eyes { animation: none; transform: translateY(-0.5px); }
+/* talking: the mouth opens and closes */
+.portrait.mood-talking .mouth { animation: talk 0.22s steps(2) infinite; }
+@keyframes talk { 50% { transform: scaleY(2.2); } }
+@media (prefers-reduced-motion: reduce) {
+  .portrait .eyes, .portrait.mood-talking .mouth, .summon { animation: none; }
+}
+
+.dock-portrait {
+  padding: 4px; border-radius: var(--radius);
+  background: var(--panel-2); border: var(--border-w) solid var(--accent);
+}
+
+.summon {
+  position: fixed; right: 22px; bottom: 22px; z-index: 35;
+  padding: 6px; border-radius: 50%;
+  background: var(--panel-2); border: 2px solid var(--accent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  animation: bob 3.2s ease-in-out infinite;
+}
+.summon:hover { transform: scale(1.06); }
+@keyframes bob { 50% { translate: 0 -3px; } }
+.summon-label {
+  position: absolute; right: calc(100% + 10px); top: 50%; translate: 0 -50%;
+  white-space: nowrap; padding: 4px 10px; border-radius: var(--radius);
+  background: var(--panel-2); border: var(--border-w) solid var(--line);
+  opacity: 0; pointer-events: none; transition: opacity 0.15s;
+}
+.summon:hover .summon-label, .summon:focus-visible .summon-label { opacity: 1; }
+:root[data-skin='classic'] .summon { border-radius: 0; box-shadow: 0 0 0 3px #0a1615, 5px 5px 0 rgba(0, 0, 0, 0.6); }
+
+/* Wide screens: the dock is a third column and the page makes room for it. */
+.shell.docked { grid-template-columns: 220px minmax(0, 1fr) 380px; }
+.dock {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 14px;
+  background: var(--panel); border-left: var(--border-w) solid var(--line);
+}
+.dock-head { display: flex; align-items: center; gap: 10px; }
+.dock .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); padding: 6px 8px; }
+.steward-chat { display: flex; flex-direction: column; min-height: 0; }
+.steward-chat.compact { flex: 1; }
+.steward-chat.compact .chat { flex: 1; max-height: none; min-height: 0; }
+.chat-row { display: flex; align-items: flex-end; gap: 8px; }
+.chat-row.user { justify-content: flex-end; }
+.chat-row .bubble { max-width: 85%; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 36px; }
+.suggestions .chip { cursor: pointer; background: transparent; }
+.steward-asleep { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 12px; }
+.thinking-dots { display: flex; gap: 5px; padding: 12px 14px; }
+.thinking-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: dots 1s infinite; }
+.thinking-dots span:nth-child(2) { animation-delay: 0.15s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes dots { 50% { translate: 0 -4px; opacity: 0.5; } }
+
+/* Medium screens: no room for a third column, so the dock slides over the page. */
+@media (max-width: 1199px) {
+  .shell.docked { grid-template-columns: 220px minmax(0, 1fr); }
+  .dock {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 45;
+    width: min(400px, 92vw); box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+  }
+}
+
 /* ---------- small screens: bottom bar of groups ---------- */
 
 @media (max-width: 820px) {
@@ -334,4 +407,9 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
   .badges { grid-template-columns: repeat(6, 1fr); }
   .cal-day { min-height: 44px; padding: 3px; }
   .bubble { max-width: 92%; }
+  .shell.docked { grid-template-columns: 1fr; }
+  .dock { width: 100%; bottom: calc(62px + env(safe-area-inset-bottom)); box-shadow: none; }
+  .summon { bottom: calc(76px + env(safe-area-inset-bottom)); right: 14px; }
+  .summon .portrait { width: 44px; height: 44px; }
+  .summon-label { display: none; }
 }
