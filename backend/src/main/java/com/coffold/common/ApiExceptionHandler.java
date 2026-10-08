@@ -3,11 +3,13 @@ package com.coffold.common;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.LinkedHashMap;
@@ -44,6 +46,13 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception e) {
+        // Spring's own web errors (no such route, wrong method, missing
+        // parameter...) already know their status: keep it, don't call it a 500.
+        if (e instanceof ErrorResponse known) {
+            HttpStatusCode status = known.getStatusCode();
+            String code = status.value() == 404 ? "not_found" : "http_" + status.value();
+            return ResponseEntity.status(status).body(body(code, known.getBody().getTitle()));
+        }
         log.error("Unhandled API error", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(body("server_error", "Something went wrong on our side."));

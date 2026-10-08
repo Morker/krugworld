@@ -1,0 +1,39 @@
+# Production: copy this folder to /opt/coffold/ on the server, add a .env
+# (see .env.example) and the jar, then run ./redeploy.sh.
+#
+# The app listens on 127.0.0.1 only — the host's nginx terminates HTTPS and
+# proxies to it. Port 8095 avoids the other projects on the box (8080, 8090).
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: coffold
+      POSTGRES_USER: coffold
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - coffold-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coffold -d coffold"]
+      interval: 5s
+      retries: 20
+
+  app:
+    build: .
+    image: coffold:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/coffold
+      SPRING_DATASOURCE_USERNAME: coffold
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      PORT: "8080"
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "true"
+      COFFOLD_ZONE: Asia/Kuala_Lumpur
+    ports:
+      - "127.0.0.1:8095:8080"
+
+volumes:
+  coffold-db:
