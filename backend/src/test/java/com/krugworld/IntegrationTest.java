@@ -4,6 +4,7 @@ import com.krugworld.auth.CurrentUser;
 import com.krugworld.auth.User;
 import com.krugworld.auth.UserRegistered;
 import com.krugworld.auth.UserRepository;
+import com.krugworld.steward.FakeChatProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,9 +33,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * (shared by every test class, since the Spring context is cached). Tests
  * never assume an empty database — each makes its own uniquely named users.
  */
-@SpringBootTest(properties = "krugworld.scheduling.enabled=false")
+@SpringBootTest(properties = {
+        "krugworld.scheduling.enabled=false",
+        // The Steward talks to a scripted fake in tests: no network, no API cost.
+        "krugworld.steward.provider=fake"})
 @AutoConfigureMockMvc
-@Import(TestcontainersConfig.class)
+@Import({TestcontainersConfig.class, FakeChatProvider.class})
 public abstract class IntegrationTest {
 
     @Autowired protected MockMvc mvc;
