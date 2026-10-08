@@ -238,11 +238,11 @@ public class LedgerService {
 
     // ---------------- helpers ----------------
 
-    Account account(Long userId, Long id) {
+    public Account account(Long userId, Long id) {
         return accounts.findByIdAndUserId(id, userId).orElseThrow(() -> ApiException.notFound("Account"));
     }
 
-    Account activeAccount(Long userId, Long id) {
+    public Account activeAccount(Long userId, Long id) {
         Account account = account(userId, id);
         if (account.isArchived()) {
             throw ApiException.badRequest("account_archived", account.getName() + " is archived.");
@@ -250,12 +250,12 @@ public class LedgerService {
         return account;
     }
 
-    Category category(Long userId, Long id) {
+    public Category category(Long userId, Long id) {
         return categories.findByIdAndUserId(id, userId).orElseThrow(() -> ApiException.notFound("Category"));
     }
 
     /** The user's accounts and categories, loaded once, to label a list of entries. */
-    Lookup lookup(Long userId) {
+    public Lookup lookup(Long userId) {
         return new Lookup(
                 accounts.findByUserIdOrderByArchivedAscIdAsc(userId).stream()
                         .collect(Collectors.toMap(Account::getId, Function.identity())),
@@ -263,19 +263,20 @@ public class LedgerService {
                         .collect(Collectors.toMap(Category::getId, Function.identity())));
     }
 
-    record Lookup(Map<Long, Account> accounts, Map<Long, Category> categories) {
+    public record Lookup(Map<Long, Account> accounts, Map<Long, Category> categories) {
 
-        EntryView view(LedgerEntry e) {
+        public EntryView view(LedgerEntry e) {
             return new EntryView(e.getId(), e.getType(), e.getAmount(), e.getOccurredOn(), e.getNote(),
-                    ref(e.getAccountId()), ref(e.getToAccountId()), categoryRef(e.getCategoryId()), false);
+                    ref(e.getAccountId()), ref(e.getToAccountId()), categoryRef(e.getCategoryId()),
+                    e.getRecurringRuleId() != null);
         }
 
-        Ref ref(Long accountId) {
+        public Ref ref(Long accountId) {
             Account a = accountId == null ? null : accounts.get(accountId);
             return a == null ? null : new Ref(a.getId(), a.getName());
         }
 
-        CategoryRef categoryRef(Long categoryId) {
+        public CategoryRef categoryRef(Long categoryId) {
             Category c = categoryId == null ? null : categories.get(categoryId);
             return c == null ? null : new CategoryRef(c.getId(), c.getName(), c.getIcon(), c.getColor());
         }

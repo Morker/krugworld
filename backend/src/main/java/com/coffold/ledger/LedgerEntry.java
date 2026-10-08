@@ -53,6 +53,10 @@ public class LedgerEntry {
     @Column(nullable = false, length = 200)
     private String note = "";
 
+    /** Set when the recurring job created this entry; null for anything a person logged. */
+    @Column(name = "recurring_rule_id")
+    private Long recurringRuleId;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -125,6 +129,14 @@ public class LedgerEntry {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public Long getRecurringRuleId() {
+        return recurringRuleId;
+    }
+
+    public void setRecurringRuleId(Long recurringRuleId) {
+        this.recurringRuleId = recurringRuleId;
     }
 
     public OffsetDateTime getCreatedAt() {

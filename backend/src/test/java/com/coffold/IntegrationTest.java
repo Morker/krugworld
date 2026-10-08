@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * (shared by every test class, since the Spring context is cached). Tests
  * never assume an empty database — each makes its own uniquely named users.
  */
-@SpringBootTest
+@SpringBootTest(properties = "coffold.scheduling.enabled=false")
 @AutoConfigureMockMvc
 @Import(TestcontainersConfig.class)
 public abstract class IntegrationTest {

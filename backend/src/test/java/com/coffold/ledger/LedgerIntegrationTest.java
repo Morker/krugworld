@@ -117,11 +117,11 @@ class LedgerIntegrationTest extends IntegrationTest {
         // Bob can't log against Alice's purse, nor see, edit or delete her entry.
         postAs(bob, "/api/entries", entry("EXPENSE", "5.00", alicePurse, categoryId(bob, "Food")))
                 .andExpect(status().isNotFound());
-        getAs(bob, "/api/entries").andExpect(jsonPath("$.length()").value(0));
+        getAs(bob, "/api/entries?month=2026-10").andExpect(jsonPath("$.length()").value(0));
         putAs(bob, "/api/entries/" + id, entry("EXPENSE", "1.00", alicePurse, categoryId(alice, "Food")))
                 .andExpect(status().isNotFound());
         deleteAs(bob, "/api/entries/" + id).andExpect(status().isNotFound());
-        getAs(alice, "/api/entries").andExpect(jsonPath("$.length()").value(1));
+        getAs(alice, "/api/entries?month=2026-10").andExpect(jsonPath("$.length()").value(1));
     }
 
     @Test
