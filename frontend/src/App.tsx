@@ -1,33 +1,48 @@
-import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { useMe } from './api/hooks'
+import { Layout } from './components/Layout'
+import { ErrorLine } from './components/ui'
+import { AccountsPage } from './pages/AccountsPage'
+import { LoginPage, RegisterPage } from './pages/AuthPages'
+import { BudgetsPage } from './pages/BudgetsPage'
+import { HallPage } from './pages/HallPage'
+import { LedgerPage } from './pages/LedgerPage'
+import { QuestsPage } from './pages/QuestsPage'
+import { RecurringPage } from './pages/RecurringPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { useAccountSkin } from './skin/skin'
 
-type Status = { app: string; status: string; schemaVersion: string }
-
-// Step 1 placeholder: proves browser -> Vite proxy -> Spring -> Postgres
-// works end to end. Replaced by the real app shell and skins in step 3.
 export default function App() {
-  const [status, setStatus] = useState<Status | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { data: me, isLoading, error } = useMe()
+  useAccountSkin(me)
 
-  useEffect(() => {
-    fetch('/api/status')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<Status>
-      })
-      .then(setStatus)
-      .catch((e: Error) => setError(e.message))
-  }, [])
+  if (isLoading) return null
+  if (error) {
+    return <div className="auth"><section className="panel"><h1>Coffold</h1><ErrorLine error={error} /></section></div>
+  }
+
+  // Logged out: only the door is reachable. Logged in: the door sends you inside.
+  if (!me) {
+    return (
+      <Routes>
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="*" element={<LoginPage />} />
+      </Routes>
+    )
+  }
 
   return (
-    <main style={{ textAlign: 'center' }}>
-      <h1>Coffold</h1>
-      {status && (
-        <p>
-          API {status.status} · database schema v{status.schemaVersion}
-        </p>
-      )}
-      {error && <p style={{ color: '#e5606a' }}>Can't reach the API ({error}). Is the backend running?</p>}
-      {!status && !error && <p>Connecting…</p>}
-    </main>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route index element={<HallPage />} />
+        <Route path="ledger" element={<LedgerPage />} />
+        <Route path="budgets" element={<BudgetsPage />} />
+        <Route path="quests" element={<QuestsPage />} />
+        <Route path="recurring" element={<RecurringPage />} />
+        <Route path="accounts" element={<AccountsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }

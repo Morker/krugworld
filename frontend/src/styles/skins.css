@@ -1,0 +1,133 @@
+/*
+ * The skin system. Every component reads these variables and nothing else,
+ * so a skin is just a different set of values on <html>:
+ *
+ *   data-skin="classic"   Krugger's Tavern exactly as it was: pixel fonts,
+ *                         teal stone, square chunky borders, scanlines.
+ *   data-skin="modern"    Pirata One + Barlow Condensed, softer panels, with
+ *                         data-theme picking the background:
+ *                         steel (default) | oak | forest | parchment.
+ */
+
+/* ---------- modern skin (base) ---------- */
+:root {
+  --font-display: 'Pirata One', serif;
+  --font-body: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --fs-body: 17px;
+  --fs-small: 14px;
+  --fs-h1: 34px;
+  --fs-h2: 22px;
+  --heading-case: none;
+  --heading-spacing: 0.02em;
+  --radius: 10px;
+  --border-w: 1px;
+  --panel-shadow: none;
+  --heading-shadow: none;
+  --bg-image: none;
+
+  /* Knight's steel */
+  --bg: #151a22;
+  --panel: #1d2430;
+  --panel-2: #232c3a;
+  --line: #344055;
+  --text: #e6ebf3;
+  --muted: #94a1b5;
+  --heading: #e2b453;
+  --accent: #e2b453;
+  --on-accent: #151a22;
+  --hp: #e5606a;
+  --mp: #59a8f0;
+  --ok: #62c99a;
+  --danger: #e5606a;
+  --track: #283244;
+  --input-bg: #151a22;
+}
+
+:root[data-theme='oak'] {
+  --bg: #1b1410;
+  --panel: #261c16;
+  --panel-2: #2e2219;
+  --line: #4a3726;
+  --text: #f3e7d0;
+  --muted: #b39d80;
+  --heading: #e8b84a;
+  --accent: #e8b84a;
+  --on-accent: #1b1410;
+  --hp: #e0564b;
+  --mp: #4f9be0;
+  --ok: #5fbf8a;
+  --danger: #e0564b;
+  --track: #3a2b20;
+  --input-bg: #1b1410;
+}
+
+:root[data-theme='forest'] {
+  --bg: #0f1c17;
+  --panel: #16271f;
+  --panel-2: #1b3026;
+  --line: #2f4a3c;
+  --text: #e8f0e4;
+  --muted: #93ab9c;
+  --heading: #d9b25a;
+  --accent: #d9b25a;
+  --on-accent: #0f1c17;
+  --hp: #e06a5a;
+  --mp: #5aaed9;
+  --ok: #7fd19b;
+  --danger: #e06a5a;
+  --track: #203a2e;
+  --input-bg: #0f1c17;
+}
+
+:root[data-theme='parchment'] {
+  color-scheme: light;
+  --bg: #f3ead6;
+  --panel: #fbf5e8;
+  --panel-2: #efe3c8;
+  --line: #d6c4a0;
+  --text: #2e2218;
+  --muted: #7d6a52;
+  --heading: #8a5f12;
+  --accent: #a8771a;
+  --on-accent: #fbf5e8;
+  --hp: #c4433a;
+  --mp: #2f74b5;
+  --ok: #2f8a57;
+  --danger: #c4433a;
+  --track: #e6d7b5;
+  --input-bg: #fffaf0;
+}
+
+/* ---------- classic skin: Krugger's Tavern, unchanged ---------- */
+:root[data-skin='classic'] {
+  color-scheme: dark;
+  --font-display: 'Press Start 2P', monospace;
+  --font-body: 'VT323', monospace;
+  --fs-body: 20px;
+  --fs-small: 17px;
+  --fs-h1: 20px;
+  --fs-h2: 12px;
+  --heading-case: uppercase;
+  --heading-spacing: 0.04em;
+  --radius: 0px;
+  --border-w: 3px;
+  --panel-shadow: 0 0 0 3px #0a1615, 6px 6px 0 rgba(0, 0, 0, 0.6);
+  --heading-shadow: 2px 2px 0 #0a1615;
+  --bg-image: repeating-linear-gradient(0deg, #060f0f 0 3px, #0d0512 3px 6px);
+
+  --bg: #060f0f;
+  --panel: #0e1c1b;
+  --panel-2: #163130;
+  --line: #4c7273;
+  --text: #e2ecec;
+  --muted: #9fb8b6;
+  --heading: #7fc1c2;
+  --accent: #d9ad2e;
+  --on-accent: #0a1615;
+  --hp: #9f1d35;
+  --mp: #6fa3a4;
+  --ok: #4fae82;
+  --danger: #c43a50;
+  --track: #0a1615;
+  --input-bg: #0a1615;
+}
