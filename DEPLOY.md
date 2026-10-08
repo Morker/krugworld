@@ -31,7 +31,12 @@ writes `deploy\krugworld.jar`.
    ssh -i ..\KruggerTavern\.ssh\tavern_access ubuntu@43.156.150.155 "sudo mv /tmp/krugworld /opt/krugworld && sudo chown -R ubuntu /opt/krugworld"
    ```
 4. **Secrets:** on the server, `cp /opt/krugworld/.env.example /opt/krugworld/.env`
-   and set `POSTGRES_PASSWORD` (`openssl rand -base64 24`).
+   and set `POSTGRES_PASSWORD` (`openssl rand -base64 24`). For the Steward,
+   set `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` with
+   `KRUGWORLD_STEWARD_PROVIDER=openai`. After editing `.env`, apply it with
+   `docker compose up -d app` (a plain `restart` does not re-read `.env`).
+   Check the file stays one line per key: a pasted key with a stray newline
+   breaks the header it's sent in.
 5. **Start it:** `cd /opt/krugworld && chmod +x redeploy.sh && ./redeploy.sh`
 6. **nginx + HTTPS:**
    ```bash

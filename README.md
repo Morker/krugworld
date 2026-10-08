@@ -1,7 +1,8 @@
 # KrugWorld
 
-A gamified personal finance app: your ledger as an RPG character sheet.
-Balance is your health bar, budgets are mana, savings goals are quests.
+A gamified life app, the successor to Krugger's Tavern: your money, days,
+meals and training as an RPG character sheet. Balance is your health bar,
+budgets are mana, savings goals are quests, and everything you do earns XP.
 
 ## Features
 
@@ -11,12 +12,21 @@ Balance is your health bar, budgets are mana, savings goals are quests.
 - **Budgets** per category, shown as draining mana bars.
 - **Recurring entries** (salary, rent, subscriptions) booked by a nightly
   job that catches up after downtime and can't double-book a date.
-- **Game layer**: XP and levels, logging streaks, quests (savings goals),
-  and badges, all derived from the real data.
+- **Calendar** with a month view and timed or all-day events.
+- **Vitals**: meals against a daily calorie goal with a 7-day trend, and a
+  weekday training plan whose streaks only count planned days.
+- **Workshop**: an idea board from pinned to in progress to done.
+- **The Steward**: an AI helper (Claude or OpenAI) that acts on all of the
+  above through 24 tools, under a per-user daily allowance.
+- **Oracle's Eye**: Anthropic usage and cost by day, using an admin key that
+  stays in the browser.
+- **Hall**: weather, gold and Bitcoin prices, and today at a glance.
+- **Game layer**: XP and levels, activity streaks, quests (savings goals),
+  and 11 badges, all derived from the real data.
 - **Two skins**: *Classic Krugger* (pixel style) and *KrugWorld* (Pirata One
   + Barlow Condensed) with four backgrounds, saved per account.
 - **Accounts** with registration and "log in once per device".
-- One-off **import from Krugger's Tavern**.
+- One-off **import of everything from Krugger's Tavern**.
 
 ## Stack
 
