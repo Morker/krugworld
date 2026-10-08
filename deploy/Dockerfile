@@ -4,9 +4,9 @@
 FROM eclipse-temurin:17-jre
 
 WORKDIR /app
-RUN groupadd --system coffold && useradd --system --gid coffold coffold
-COPY coffold.jar app.jar
-USER coffold
+RUN groupadd --system krugworld && useradd --system --gid krugworld krugworld
+COPY krugworld.jar app.jar
+USER krugworld
 
 EXPOSE 8080
 # Cap the heap: this box is shared with other projects.

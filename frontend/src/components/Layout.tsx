@@ -28,8 +28,8 @@ export function Layout() {
     <div className="shell">
       <nav className="sidebar" aria-label="Main">
         <div className="brand">
-          <h1>Coffold</h1>
-          <div className="muted small">coffer of gold</div>
+          <h1>KrugWorld</h1>
+          <div className="muted small">a realm of your own</div>
         </div>
         {NAV.map(({ to, label, icon: Glyph, secondary }) => (
           <NavLink key={to} to={to} end={to === '/'} className={`nav-link ${secondary ? 'secondary' : ''}`}

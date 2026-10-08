@@ -7,5 +7,5 @@ export function errorText(error: unknown): string | null {
     const first = Object.values(error.fields)[0]
     return first ? `${error.message} (${first})` : error.message
   }
-  return 'Could not reach Coffold. Check your connection.'
+  return 'Could not reach KrugWorld. Check your connection.'
 }

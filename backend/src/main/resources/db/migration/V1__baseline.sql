@@ -10,4 +10,4 @@ CREATE TABLE app_meta (
     meta_value VARCHAR(255) NOT NULL
 );
 
-INSERT INTO app_meta (meta_key, meta_value) VALUES ('app_name', 'Coffold');
+INSERT INTO app_meta (meta_key, meta_value) VALUES ('app_name', 'KrugWorld');

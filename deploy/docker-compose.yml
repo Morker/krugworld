@@ -1,4 +1,4 @@
-# Production: copy this folder to /opt/coffold/ on the server, add a .env
+# Production: copy this folder to /opt/krugworld/ on the server, add a .env
 # (see .env.example) and the jar, then run ./redeploy.sh.
 #
 # The app listens on 127.0.0.1 only — the host's nginx terminates HTTPS and
@@ -8,32 +8,32 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: coffold
-      POSTGRES_USER: coffold
+      POSTGRES_DB: krugworld
+      POSTGRES_USER: krugworld
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
-      - coffold-db:/var/lib/postgresql/data
+      - krugworld-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coffold -d coffold"]
+      test: ["CMD-SHELL", "pg_isready -U krugworld -d krugworld"]
       interval: 5s
       retries: 20
 
   app:
     build: .
-    image: coffold:local
+    image: krugworld:local
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/coffold
-      SPRING_DATASOURCE_USERNAME: coffold
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/krugworld
+      SPRING_DATASOURCE_USERNAME: krugworld
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       PORT: "8080"
       SERVER_SERVLET_SESSION_COOKIE_SECURE: "true"
-      COFFOLD_ZONE: Asia/Kuala_Lumpur
+      KRUGWORLD_ZONE: Asia/Kuala_Lumpur
     ports:
       - "127.0.0.1:8095:8080"
 
 volumes:
-  coffold-db:
+  krugworld-db:

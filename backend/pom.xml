@@ -11,11 +11,11 @@
     <relativePath/>
   </parent>
 
-  <groupId>com.coffold</groupId>
-  <artifactId>coffold</artifactId>
+  <groupId>com.krugworld</groupId>
+  <artifactId>krugworld</artifactId>
   <version>0.1.0</version>
-  <name>coffold</name>
-  <description>Coffold — a gamified personal finance app (Spring Boot API)</description>
+  <name>krugworld</name>
+  <description>KrugWorld — a gamified personal finance app (Spring Boot API)</description>
   <packaging>jar</packaging>
 
   <properties>

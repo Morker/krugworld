@@ -1,5 +1,5 @@
 # Builds the one deployable jar: React app first, then the Spring jar that
-# bundles it. Output: deploy/coffold.jar, next to the Dockerfile that runs it.
+# bundles it. Output: deploy/krugworld.jar, next to the Dockerfile that runs it.
 #
 #   .\build.ps1             build with tests (needs Docker running)
 #   .\build.ps1 -SkipTests  build only
@@ -32,5 +32,5 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'backend build failed' }
 } finally { Pop-Location }
 
-Copy-Item (Join-Path $root 'backend\target\coffold-0.1.0.jar') (Join-Path $root 'deploy\coffold.jar') -Force
-Write-Host 'Built deploy\coffold.jar'
+Copy-Item (Join-Path $root 'backend\target\krugworld-0.1.0.jar') (Join-Path $root 'deploy\krugworld.jar') -Force
+Write-Host 'Built deploy\krugworld.jar'

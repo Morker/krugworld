@@ -32,7 +32,7 @@ export function SettingsPage() {
             <SkinOption active={me.skin === 'classic'} onClick={() => choose('classic')}
                         title="Classic Krugger" text="Krugger's Tavern as it was: pixel fonts, teal stone, scanlines." />
             <SkinOption active={me.skin === 'modern'} onClick={() => choose('modern')}
-                        title="Coffold" text="Pirata One and Barlow Condensed, with a background of your choosing." />
+                        title="KrugWorld" text="Pirata One and Barlow Condensed, with a background of your choosing." />
           </div>
           {me.skin === 'modern' && (
             <>

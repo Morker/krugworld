@@ -5,7 +5,7 @@ import type { Me, Skin, Theme } from '../api/types'
 // It's also kept in localStorage so the login page (before we know who you
 // are) and the first paint after reload already wear your skin.
 
-const KEY = 'coffold.skin'
+const KEY = 'krugworld.skin'
 
 type SkinChoice = { skin: Skin; theme: Theme }
 

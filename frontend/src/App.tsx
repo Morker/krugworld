@@ -18,7 +18,7 @@ export default function App() {
 
   if (isLoading) return null
   if (error) {
-    return <div className="auth"><section className="panel"><h1>Coffold</h1><ErrorLine error={error} /></section></div>
+    return <div className="auth"><section className="panel"><h1>KrugWorld</h1><ErrorLine error={error} /></section></div>
   }
 
   // Logged out: only the door is reachable. Logged in: the door sends you inside.

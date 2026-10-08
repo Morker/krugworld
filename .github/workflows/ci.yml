@@ -48,5 +48,5 @@ jobs:
         working-directory: backend
       - uses: actions/upload-artifact@v4
         with:
-          name: coffold-jar
-          path: backend/target/coffold-*.jar
+          name: krugworld-jar
+          path: backend/target/krugworld-*.jar

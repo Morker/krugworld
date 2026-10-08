@@ -1,20 +1,24 @@
 # Local development database only:  docker compose up -d db
 # Bound to 127.0.0.1:5434 (5432/5433 are taken by other local projects).
+# Fixed project name, so containers and the volume keep their names
+# whatever the checkout folder is called.
+name: krugworld
+
 services:
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: coffold
-      POSTGRES_USER: coffold
-      POSTGRES_PASSWORD: coffold
+      POSTGRES_DB: krugworld
+      POSTGRES_USER: krugworld
+      POSTGRES_PASSWORD: krugworld
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
-      - coffold-db:/var/lib/postgresql/data
+      - krugworld-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U coffold -d coffold"]
+      test: ["CMD-SHELL", "pg_isready -U krugworld -d krugworld"]
       interval: 5s
       retries: 10
 
 volumes:
-  coffold-db:
+  krugworld-db:

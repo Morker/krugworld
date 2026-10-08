@@ -100,7 +100,7 @@ function AccountForm({ account, onClose }: { account?: Account; onClose: () => v
               {KINDS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
             </select>
           </Field>
-          <Field label="Balance before Coffold (RM)">
+          <Field label="Balance before KrugWorld (RM)">
             <input inputMode="decimal" value={opening} onChange={(e) => setOpening(e.target.value)} />
           </Field>
         </div>

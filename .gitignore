@@ -19,4 +19,4 @@ frontend/dist/
 *.pem
 
 # Built artifact (see build.ps1)
-deploy/coffold.jar
+deploy/krugworld.jar

@@ -19,8 +19,8 @@ export function LoginPage() {
   return (
     <div className="auth">
       <section className="panel">
-        <h1>Coffold</h1>
-        <p className="muted" style={{ textAlign: 'center', margin: '6px 0 0' }}>Your coffer of gold awaits</p>
+        <h1>KrugWorld</h1>
+        <p className="muted" style={{ textAlign: 'center', margin: '6px 0 0' }}>Your realm awaits</p>
         <form onSubmit={submit}>
           <Field label="Name">
             <input autoComplete="username" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} required />
@@ -56,7 +56,7 @@ export function RegisterPage() {
   return (
     <div className="auth">
       <section className="panel">
-        <h1>Coffold</h1>
+        <h1>KrugWorld</h1>
         <p className="muted" style={{ textAlign: 'center', margin: '6px 0 0' }}>Carve your name into the ledger</p>
         <form onSubmit={submit}>
           <Field label="Name (3–40 letters, digits, _ or -)" error={fields.username}>

@@ -1,4 +1,4 @@
-# Coffold
+# KrugWorld
 
 A gamified personal finance app: your ledger as an RPG character sheet.
 Balance is your health bar, budgets are mana, savings goals are quests.
@@ -13,7 +13,7 @@ Balance is your health bar, budgets are mana, savings goals are quests.
   job that catches up after downtime and can't double-book a date.
 - **Game layer**: XP and levels, logging streaks, quests (savings goals),
   and badges, all derived from the real data.
-- **Two skins**: *Classic Krugger* (pixel style) and *Coffold* (Pirata One
+- **Two skins**: *Classic Krugger* (pixel style) and *KrugWorld* (Pirata One
   + Barlow Condensed) with four backgrounds, saved per account.
 - **Accounts** with registration and "log in once per device".
 - One-off **import from Krugger's Tavern**.
@@ -49,7 +49,7 @@ cd frontend && npm run build   # type-checks and builds
 
 ## Build and deploy
 
-`.\build.ps1` produces `deploy/coffold.jar` (React app bundled inside).
+`.\build.ps1` produces `deploy/krugworld.jar` (React app bundled inside).
 See [DEPLOY.md](DEPLOY.md).
 
 ## Schema changes
