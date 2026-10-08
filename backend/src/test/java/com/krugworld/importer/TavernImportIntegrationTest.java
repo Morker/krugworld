@@ -52,6 +52,46 @@ class TavernImportIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void importsTheRestOfTavernTooCalendarMealsTrainingAndIdeas() throws Exception {
+        CurrentUser me = newUser();
+        List<Map<String, Object>> export = List.of(
+                Map.of("key", "kt-calendar", "value", """
+                        {"2026-10-09":[{"id":"e1","text":"Dentist"},{"id":"e2","text":""}],
+                         "2026-10-20":[{"id":"e3","text":"Payday drinks"}]}"""),
+                Map.of("key", "kt-calorie-log", "value", """
+                        {"2026-10-08":[{"id":"f1","name":"Nasi lemak","cal":650},{"id":"f2","name":"Teh","cal":120}]}"""),
+                Map.of("key", "kt-calorie-goal", "value", "1800"),
+                Map.of("key", "kt-workouts", "value", """
+                        [{"id":"w1","name":"Gym","days":["Mon","Wed","Fri"],"completedDates":["2026-10-05","2026-10-07"]}]"""),
+                Map.of("key", "kt-ideas", "value", """
+                        [{"id":"i1","title":"Learn Kafka","notes":"for the resume","status":"progress"},
+                         {"id":"i2","title":"Fix bike","status":"done"}]"""));
+
+        postAs(me, "/api/import/tavern", export)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events").value(2))
+                .andExpect(jsonPath("$.meals").value(2))
+                .andExpect(jsonPath("$.workouts").value(1))
+                .andExpect(jsonPath("$.ideas").value(2))
+                .andExpect(jsonPath("$.skipped").value(1));   // the blank event
+
+        getAs(me, "/api/events?from=2026-10-01&to=2026-10-31")
+                .andExpect(jsonPath("$[0].title").value("Dentist"));
+        getAs(me, "/api/meals?date=2026-10-08")
+                .andExpect(jsonPath("$.total").value(770))
+                .andExpect(jsonPath("$.goal").value(1800));
+        getAs(me, "/api/workouts?date=2026-10-07")
+                .andExpect(jsonPath("$[0].days.length()").value(3))
+                .andExpect(jsonPath("$[0].streak").value(2))
+                .andExpect(jsonPath("$[0].totalDone").value(2));
+        getAs(me, "/api/ideas")
+                .andExpect(jsonPath("$[0].title").value("Learn Kafka"))
+                .andExpect(jsonPath("$[0].status").value("DOING"));
+        // Still no XP: none of it was done here.
+        getAs(me, "/api/character").andExpect(jsonPath("$.xp").value(0));
+    }
+
+    @Test
     void importingTwiceIsRefused() throws Exception {
         CurrentUser me = newUser();
         postAs(me, "/api/import/tavern", Map.of("kt-finance", FINANCE)).andExpect(status().isOk());
