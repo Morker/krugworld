@@ -18,7 +18,7 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 ## Stack and layout
 
 - `backend/` — Spring Boot 3.3 (Java 17), Spring Data JPA + JdbcTemplate for aggregates,
-  Spring Security, Flyway (`db/migration/V1..V7`), Testcontainers 1.21.4 (pinned: older
+  Spring Security, Flyway (`db/migration/V1..V8`), Testcontainers 1.21.4 (pinned: older
   versions fail against Docker 29).
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
@@ -68,11 +68,15 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 - All features of the old Tavern are built, tested and committed.
 - Device step 1 (server) done: pairing codes + revocable device tokens (V8), `/api/device/summary`,
   workout ticking, tap-to-talk voice (`gpt-transcribe` → Steward → `gpt-4o-mini-tts` PCM stream),
-  Settings → Desk Gaby panel. 73 backend tests. Real OpenAI audio not yet tried end to end.
+  Settings → Desk Gaby panel. 73 backend tests. Tried end to end with real OpenAI
+  (2026-10-12): rojak transcribed well with auto language detection, tools ran, ~4.7 s to the
+  text reply, first audio byte ~1.1 s later. Owner's OpenAI key lives outside the repo in
+  `C:\Users\Krugger\Desktop\key\krugworld api key\` — read it into `OPENAI_API_KEY`, never print it.
 - **Not deployed yet.** Planned: `krugworld.veteryr.online`, `/opt/krugworld`, app on
   `127.0.0.1:8095` on the same shared server as the old Tavern (see `DEPLOY.md`; never
   touch the other projects' containers on that box). DNS record + certbot still needed.
-- No git remote yet, so the GitHub Actions CI in `.github/workflows/ci.yml` has never run.
+- Remote: https://github.com/Morker/krugworld (private). The owner commits and pushes with
+  GitHub Desktop.
 
 ## Next: Gaby as a physical device
 

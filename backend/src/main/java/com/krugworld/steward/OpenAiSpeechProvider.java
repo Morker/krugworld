@@ -36,7 +36,7 @@ public class OpenAiSpeechProvider implements SpeechProvider {
     // Context for the transcriber, not an instruction: it nudges spelling of
     // the words this user actually says towards the right side of the mix.
     private static final String TRANSCRIBE_HINT =
-            "Malaysian speaker mixing English and Malay. RM, ringgit, nasi lemak, roti canai, teh tarik, "
+            "Malaysian speaker talking to Gaby, mixing English and Malay. RM, ringgit, nasi lemak, roti canai, teh tarik, "
                     + "gym, esok, tadi, semalam, pukul, belanja, duit.";
 
     private final RestClient http = RestClient.create();
