@@ -1,12 +1,15 @@
 package com.krugworld.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.krugworld.device.DeviceService;
+import com.krugworld.device.DeviceTokenFilter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,10 +18,12 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
@@ -59,7 +64,34 @@ public class SecurityConfig {
 
     private static final String REMEMBER_ME_KEY_NAME = "remember-me-key";
 
+    /**
+     * Paired devices (desk Gaby) get their own, smaller world: only
+     * {@code /api/device/**}, bearer tokens instead of cookies, no session.
+     * With no cookies involved there's nothing for CSRF to protect, and a
+     * browser's login cookie is ignored here just as a device token is
+     * ignored everywhere else. Checked first; everything else falls through
+     * to the browser chain below.
+     */
     @Bean
+    @Order(1)
+    public SecurityFilterChain deviceFilterChain(HttpSecurity http, DeviceService devices) throws Exception {
+        http
+            .securityMatcher("/api/device/**")
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .requestCache(cache -> cache.disable())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/device/pair").permitAll()
+                .anyRequest().hasRole("DEVICE"))
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                .accessDeniedHandler((req, res, e) -> res.setStatus(HttpStatus.UNAUTHORIZED.value())))
+            .addFilterBefore(new DeviceTokenFilter(devices), AnonymousAuthenticationFilter.class);
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http, RememberMeServices rememberMeServices,
                                            ObjectMapper json) throws Exception {
         // Raw (unmasked) token in the cookie, so the header the frontend

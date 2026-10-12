@@ -175,3 +175,8 @@ export type LifeToday = {
 export type StewardStatus = { ready: boolean; provider: string; remaining: number; limit: number }
 export type StewardTurn = { role: 'user' | 'assistant'; text: string; subtitle?: string | null; error?: boolean }
 export type StewardReply = { reply: string; subtitle: string | null; remaining: number }
+
+// ---------------- desk devices ----------------
+
+export type Device = { id: number; name: string; createdAt: string; lastSeenAt: string | null }
+export type PairingCode = { code: string; expiresAt: string }

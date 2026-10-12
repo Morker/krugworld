@@ -1,7 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { IconCheck, IconLogout, IconUpload } from '@tabler/icons-react'
-import { useLogout, useMe, useSavePreferences, useTavernImport } from '../api/hooks'
+import { IconCheck, IconLogout, IconTrash, IconUpload } from '@tabler/icons-react'
+import {
+  useDevices,
+  useLogout,
+  useMe,
+  useNewPairingCode,
+  useRevokeDevice,
+  useSavePreferences,
+  useTavernImport,
+} from '../api/hooks'
 import type { Skin, Theme } from '../api/types'
 import { ErrorLine, Panel } from '../components/ui'
 import { applySkin, THEMES } from '../skin/skin'
@@ -53,6 +61,7 @@ export function SettingsPage() {
         </Panel>
 
         <WeatherSettings />
+        <DeskGaby />
         <TavernImport />
       </div>
     </>
@@ -69,6 +78,88 @@ function SkinOption({ active, title, text, onClick }: { active: boolean; title: 
       </span>
       {active && <IconCheck size={20} color="var(--accent)" aria-hidden="true" />}
     </button>
+  )
+}
+
+/** Seconds until `iso`, ticking once a second; 0 once it has passed. */
+function useSecondsLeft(iso: string | undefined) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!iso) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [iso])
+  return iso ? Math.max(0, Math.round((Date.parse(iso) - now) / 1000)) : 0
+}
+
+function seenLabel(iso: string | null): string {
+  if (!iso) return 'Never seen yet'
+  const minutes = Math.round((Date.now() - Date.parse(iso)) / 60000)
+  if (minutes < 2) return 'Online now'
+  if (minutes < 60) return `Seen ${minutes} min ago`
+  return `Seen ${new Date(iso).toLocaleString()}`
+}
+
+/**
+ * Pair the desk device: a six-digit code to type on its screen. The device
+ * gets its own token (never this account's password) and can be revoked here.
+ */
+function DeskGaby() {
+  const devices = useDevices()
+  const newCode = useNewPairingCode()
+  const revoke = useRevokeDevice()
+  const pairing = newCode.data
+  const secondsLeft = useSecondsLeft(pairing?.expiresAt)
+  const live = pairing && secondsLeft > 0
+  const list = devices.data ?? []
+
+  // Refresh the list while a code is showing, so a new device appears once it pairs.
+  const { refetch } = devices
+  useEffect(() => {
+    if (!live) return
+    const timer = setInterval(() => refetch(), 4000)
+    return () => clearInterval(timer)
+  }, [live, refetch])
+
+  return (
+    <Panel title="Desk Gaby">
+      <p className="small muted" style={{ marginTop: 0 }}>
+        Pair your desk device so Gaby can show today's numbers and answer out loud, without opening this app.
+      </p>
+      {live ? (
+        <div role="status" style={{ textAlign: 'center', margin: '8px 0 12px' }}>
+          <div className="display" style={{ fontSize: 'calc(var(--fs-h1) * 1.4)', letterSpacing: '0.12em' }}>
+            {pairing.code.slice(0, 3)} {pairing.code.slice(3)}
+          </div>
+          <div className="small muted">
+            Type this on the device. Expires in {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, '0')}.
+          </div>
+        </div>
+      ) : (
+        <button className="primary" onClick={() => newCode.mutate()} disabled={newCode.isPending}>
+          {pairing ? 'Code expired: make another' : 'Pair a device'}
+        </button>
+      )}
+      <ErrorLine error={newCode.error} />
+
+      {list.length > 0 && (
+        <div className="list" style={{ marginTop: 12 }}>
+          {list.map((d) => (
+            <div key={d.id} className="list-row">
+              <span className="grow">
+                <b>{d.name}</b>
+                <span className="small muted" style={{ display: 'block' }}>{seenLabel(d.lastSeenAt)}</span>
+              </span>
+              <button className="ghost" aria-label={`Remove ${d.name}`} disabled={revoke.isPending}
+                      onClick={() => confirm(`Remove ${d.name}? It will need a new code to come back.`) && revoke.mutate(d.id)}>
+                <IconTrash size={18} aria-hidden="true" /> Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <ErrorLine error={devices.error ?? revoke.error} />
+    </Panel>
   )
 }
 

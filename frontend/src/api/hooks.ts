@@ -4,12 +4,14 @@ import type {
   Account,
   Category,
   CharacterSheet,
+  Device,
   Entry,
   EntryRequest,
   ImportResult,
   Me,
   MonthBudget,
   MonthSummary,
+  PairingCode,
   Quest,
   Rule,
   Skin,
@@ -274,5 +276,25 @@ export function useTavernImport() {
   return useMutation({
     mutationFn: (payload: unknown) => api<ImportResult>('/api/import/tavern', { method: 'POST', json: payload }),
     onSuccess: () => qc.invalidateQueries(),
+  })
+}
+
+// ---------------- desk devices ----------------
+
+export function useDevices() {
+  return useQuery({ queryKey: ['devices'], queryFn: () => api<Device[]>('/api/devices') })
+}
+
+export function useNewPairingCode() {
+  return useMutation({
+    mutationFn: () => api<PairingCode>('/api/devices/pairing-code', { method: 'POST' }),
+  })
+}
+
+export function useRevokeDevice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api(`/api/devices/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['devices'] }),
   })
 }

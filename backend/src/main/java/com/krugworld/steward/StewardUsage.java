@@ -1,5 +1,7 @@
 package com.krugworld.steward;
 
+import com.krugworld.common.ApiException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -52,6 +54,17 @@ public class StewardUsage {
             }
             return Verdict.OK;
         });
+    }
+
+    /** {@link #tryConsume}, with the user-facing 429s. Shared by typed chat and the device's voice. */
+    public void charge(Long userId) {
+        switch (tryConsume(userId)) {
+            case USER_LIMIT -> throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "user_limit",
+                    "Thou hast used all " + props.getDailyLimitPerUser() + " of today's words. The steward rests until tomorrow.");
+            case GLOBAL_LIMIT -> throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "global_limit",
+                    "The whole realm has kept the steward busy today. Try again tomorrow.");
+            case OK -> { }
+        }
     }
 
     public int remaining(Long userId) {

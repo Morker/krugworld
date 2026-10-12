@@ -13,6 +13,7 @@ public class StewardProperties {
     private String provider = "openai";
     private final Anthropic anthropic = new Anthropic();
     private final OpenAi openai = new OpenAi();
+    private final Voice voice = new Voice();
     private int dailyLimitPerUser = 40;
     private int dailyLimitGlobal = 400;
     private int maxMessageChars = 1000;
@@ -46,6 +47,38 @@ public class StewardProperties {
         public void setModel(String model) { this.model = model; }
     }
 
+    /** Speech in and out for the desk device. Uses the OpenAI key above. */
+    public static class Voice {
+        private String provider = "openai";
+        private String transcribeModel = "gpt-transcribe";
+        /** Blank lets the model detect it, which suits English/Malay mixed in one sentence. */
+        private String language = "";
+        private String speechModel = "gpt-4o-mini-tts";
+        private String voice = "marin";
+        private String instructions = """
+                Speak as Gaby, a cheerful, quick-witted young steward in a medieval keep. Warm and \
+                a little playful, brisk rather than slow. She is Malaysian: pronounce Malay words \
+                and Malaysian food and place names naturally, with a light Malaysian English accent.""";
+        /** About 30 seconds of 16 kHz 16-bit mono; a clip longer than that is a stuck button. */
+        private int maxClipBytes = 1_048_576;
+
+        public String getProvider() { return provider; }
+        public void setProvider(String provider) { this.provider = provider; }
+        public String getTranscribeModel() { return transcribeModel; }
+        public void setTranscribeModel(String transcribeModel) { this.transcribeModel = transcribeModel; }
+        public String getLanguage() { return language; }
+        public void setLanguage(String language) { this.language = language; }
+        public String getSpeechModel() { return speechModel; }
+        public void setSpeechModel(String speechModel) { this.speechModel = speechModel; }
+        public String getVoice() { return voice; }
+        public void setVoice(String voice) { this.voice = voice; }
+        public String getInstructions() { return instructions; }
+        public void setInstructions(String instructions) { this.instructions = instructions; }
+        public int getMaxClipBytes() { return maxClipBytes; }
+        public void setMaxClipBytes(int maxClipBytes) { this.maxClipBytes = maxClipBytes; }
+    }
+
+    public Voice getVoice() { return voice; }
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
     public Anthropic getAnthropic() { return anthropic; }

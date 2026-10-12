@@ -65,13 +65,7 @@ public class StewardController {
         if (!steward.isReady()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "not_configured", "The steward has no key to serve with yet.");
         }
-        switch (usage.tryConsume(me.id())) {
-            case USER_LIMIT -> throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "user_limit",
-                    "Thou hast used all " + props.getDailyLimitPerUser() + " of today's words. The steward rests until tomorrow.");
-            case GLOBAL_LIMIT -> throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "global_limit",
-                    "The whole realm has kept the steward busy today. Try again tomorrow.");
-            case OK -> { }
-        }
+        usage.charge(me.id());
 
         try {
             StewardReply reply = steward.chat(me.id(), conversation(body.history(), message));

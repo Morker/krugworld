@@ -23,7 +23,10 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
 - Packages: `auth`, `ledger`, `budget`, `recurring`, `quest`, `game`, `calendar`,
-  `workshop`, `vitals`, `life`, `steward`, `importer`, `web`, `common`.
+  `workshop`, `vitals`, `life`, `steward`, `device`, `importer`, `web`, `common`.
+- Two security chains: `/api/device/**` is stateless bearer-token only (`DeviceTokenFilter`,
+  `ROLE_DEVICE`, principal `DevicePrincipal`); everything else is the browser chain
+  (session + remember-me + CSRF, principal `CurrentUser`). Device API: `docs/DEVICE-API.md`.
 
 ## Conventions
 
@@ -62,7 +65,10 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 
 ## Status (2026-10-12)
 
-- All features of the old Tavern are built, tested (62 backend tests) and committed.
+- All features of the old Tavern are built, tested and committed.
+- Device step 1 (server) done: pairing codes + revocable device tokens (V8), `/api/device/summary`,
+  workout ticking, tap-to-talk voice (`gpt-transcribe` → Steward → `gpt-4o-mini-tts` PCM stream),
+  Settings → Desk Gaby panel. 73 backend tests. Real OpenAI audio not yet tried end to end.
 - **Not deployed yet.** Planned: `krugworld.veteryr.online`, `/opt/krugworld`, app on
   `127.0.0.1:8095` on the same shared server as the old Tavern (see `DEPLOY.md`; never
   touch the other projects' containers on that box). DNS record + certbot still needed.
@@ -87,7 +93,7 @@ Malay isn't explicitly listed in the docs — test `ms`) → existing `StewardSe
 is simplest for the ESP32; it streams) → device plays audio and shows the subtitle.
 
 **Planned order:**
-1. Server: device pairing (code shown in Settings → device gets its own revocable token;
+1. ✅ Server: device pairing (code shown in Settings → device gets its own revocable token;
    never the user's password), a voice endpoint, and a compact summary endpoint.
 2. Firmware v1: glance screen (Gaby's face + today's numbers, tap to tick workouts,
    quick-log buttons). PlatformIO + Arduino + LVGL suggested to start.
