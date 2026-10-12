@@ -59,6 +59,9 @@ uint32_t millisTick() { return millis(); }
 }  // namespace
 
 bool begin() {
+  // The GT911 hands over its 184-byte config in one read; Arduino's default
+  // 128-byte I2C buffer would cut it short. Must be set before begin().
+  Wire.setBufferSize(256);
   Wire.begin(I2C_SDA, I2C_SCL);
 
   // Waveshare's power-up order for the panel and touch chip: hold 6 low,
@@ -78,7 +81,8 @@ bool begin() {
   gfx->fillScreen(RGB565_BLACK);
 
   touch.setPins(-1, -1);  // reset/interrupt go through the expander, done above
-  if (!touch.begin(Wire, GT911_SLAVE_ADDRESS_L, I2C_SDA, I2C_SCL)) {
+  // No pins: reuse the bus started above instead of starting it again.
+  if (!touch.begin(Wire, GT911_SLAVE_ADDRESS_L)) {
     Serial.println("[board] GT911 touch not found");
     return false;
   }

@@ -99,7 +99,11 @@ is simplest for the ESP32; it streams) → device plays audio and shows the subt
 **Planned order:**
 1. ✅ Server: device pairing (code shown in Settings → device gets its own revocable token;
    never the user's password), a voice endpoint, and a compact summary endpoint.
-2. Firmware v1: glance screen (Gaby's face + today's numbers, tap to tick workouts,
+2. ✅ Firmware v1 (`firmware/`, see its README): pairing pad, glance screen with blinking
+   Gaby, tap-to-tick workouts; runs on the real board, paired against the local backend.
+   Still to do from the original idea: quick-log buttons. The board's dev server URL is
+   this PC's LAN IP in `firmware/include/secrets.h` (gitignored).
+   Was: glance screen (Gaby's face + today's numbers, tap to tick workouts,
    quick-log buttons). PlatformIO + Arduino + LVGL suggested to start.
 3. Tap-to-talk voice.
 4. Reminders and moods (events soon, workout not done, budget low, streak at risk).

@@ -1,2 +1,6 @@
 .pio/
 .vscode/
+# Wi-Fi password and server address. Template: include/secrets.example.h
+include/secrets.h
+# Flash dumps of the board (16 MB each): kept locally, never committed.
+backup/
