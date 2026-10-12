@@ -1,12 +1,15 @@
 // Desk Gaby: KrugWorld on the desk. Pairs with the server using a code from
-// Settings, then shows today at a glance and lets you tick workouts.
+// Settings, shows today at a glance, ticks workouts, and talks: hold the bar,
+// speak, and Gaby answers out loud.
 //
-// Two halves that never block each other:
+// Three parts that never block each other:
 //   - this loop (core 1): LVGL, touch, screens
-//   - net (core 0): Wi-Fi, the clock, HTTP to KrugWorld
+//   - audio recorder (core 1, higher priority): microphones into PSRAM
+//   - net (core 0): Wi-Fi, the clock, HTTP to KrugWorld, streaming her voice
 
 #include <Arduino.h>
 
+#include "audio.h"
 #include "board.h"
 #include "net.h"
 #include "ui.h"
@@ -18,6 +21,9 @@ void setup() {
 
   if (!board::begin()) {
     Serial.println("[gaby] no touch: screens will show but won't respond");
+  }
+  if (!audio::begin()) {
+    Serial.println("[gaby] audio not fully up: talking may not work");
   }
   ui::begin();
   net::start();
@@ -36,8 +42,18 @@ void loop() {
       case net::UpdateType::PairFailed: ui::pairFailed(update.text); break;
       case net::UpdateType::Paired: Serial.printf("[gaby] hello, %s\n", update.text); break;
       case net::UpdateType::Summary: ui::showSummary(update.summary); break;
+      case net::UpdateType::VoiceThinking: ui::voiceThinking(); break;
+      case net::UpdateType::VoiceReply: ui::voiceReply(update.heard, update.text); break;
+      case net::UpdateType::VoiceSpeaking: ui::voiceSpeaking(); break;
+      case net::UpdateType::VoiceDone: ui::voiceDone(); break;
+      case net::UpdateType::VoiceFailed: ui::voiceFailed(update.text); break;
     }
   }
+
+  const uint8_t *wav;
+  size_t size;
+  if (audio::takeClip(&wav, &size)) ui::clipRecorded(wav, size);
+
   board::tick();
   delay(5);
 }

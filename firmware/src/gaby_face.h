@@ -11,4 +11,7 @@ namespace gaby_face {
  */
 lv_obj_t *create(lv_obj_t *parent, int scale, lv_color_t background);
 
+/** Moves her mouth while her voice plays. */
+void setTalking(lv_obj_t *face, bool talking);
+
 }  // namespace gaby_face

@@ -93,7 +93,7 @@ https://www.waveshare.com/wiki/ESP32-S3-Touch-LCD-4B
 **Pipeline:** device records a WAV clip → backend → OpenAI `gpt-transcribe` (language hint;
 Malay isn't explicitly listed in the docs — test `ms`) → existing `StewardService` +
 `StewardTools` (don't build a second assistant) → OpenAI `gpt-4o-mini-tts` with
-`instructions` for Gaby's voice (voices `marin`/`cedar` recommended; PCM 24 kHz 16-bit LE
+`instructions` for Gaby's voice (voice `coral`, chosen by the owner; PCM 24 kHz 16-bit LE
 is simplest for the ESP32; it streams) → device plays audio and shows the subtitle.
 
 **Planned order:**

@@ -4,6 +4,7 @@
 #include <lvgl.h>
 #include <time.h>
 
+#include "audio.h"
 #include "gaby_face.h"
 #include "net.h"
 #include "theme.h"
@@ -217,6 +218,7 @@ void buildPair() {
 // ---------------- glance ----------------
 
 lv_obj_t *glanceScreen = nullptr;
+lv_obj_t *glanceFace = nullptr;
 lv_obj_t *nameLabel, *clockLabel, *statusLabel, *levelLabel, *xpBar, *xpLabel;
 lv_obj_t *goldValue, *manaValue, *manaBar, *manaSub, *streakValue;
 lv_obj_t *calLabel, *calBar, *workoutsBox, *eventsLabel;
@@ -231,6 +233,143 @@ void onWorkoutTap(lv_event_t *e) {
   net::submit(job);
 }
 
+// ---------------- talking to Gaby ----------------
+//
+// Idle -> (press) Listening -> (release) Sending -> Thinking -> Speaking -> Idle
+// Pressing again is ignored until she's done: the clip buffer is still in use.
+
+enum class Talk { Idle, Listening, Sending, Thinking, Speaking };
+Talk talkState = Talk::Idle;
+lv_obj_t *talkButton, *talkLabel, *talkMeter;
+lv_obj_t *bubble, *bubbleHeard, *bubbleText;
+lv_timer_t *bubbleTimer = nullptr;
+uint32_t pressedAt = 0;
+
+void hideBubble() {
+  lv_obj_add_flag(bubble, LV_OBJ_FLAG_HIDDEN);
+  if (bubbleTimer) {
+    lv_timer_delete(bubbleTimer);
+    bubbleTimer = nullptr;
+  }
+}
+
+void bubbleExpired(lv_timer_t *) {
+  bubbleTimer = nullptr;  // a one-shot timer deletes itself
+  lv_obj_add_flag(bubble, LV_OBJ_FLAG_HIDDEN);
+}
+
+/** Shows what she heard and what she said; hides itself after a while, or on a tap. */
+void showBubble(const char *heard, const char *text, uint32_t hideAfterMs = 0) {
+  if (heard[0]) {
+    lv_label_set_text_fmt(bubbleHeard, "You: \"%s\"", heard);
+    lv_obj_remove_flag(bubbleHeard, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(bubbleHeard, LV_OBJ_FLAG_HIDDEN);
+  }
+  lv_label_set_text(bubbleText, text);
+  lv_obj_remove_flag(bubble, LV_OBJ_FLAG_HIDDEN);
+  if (bubbleTimer) {
+    lv_timer_delete(bubbleTimer);
+    bubbleTimer = nullptr;
+  }
+  if (hideAfterMs) {
+    bubbleTimer = lv_timer_create(bubbleExpired, hideAfterMs, nullptr);
+    lv_timer_set_repeat_count(bubbleTimer, 1);
+  }
+}
+
+void setTalk(Talk state) {
+  talkState = state;
+  const char *text = "";
+  lv_color_t bg = theme::panel2(), fg = theme::text();
+  switch (state) {
+    case Talk::Idle: text = "Hold to talk to Gaby"; break;
+    case Talk::Listening: text = "Listening... let go to send"; bg = theme::hp(); fg = theme::bg(); break;
+    case Talk::Sending: text = "Sending..."; fg = theme::muted(); break;
+    case Talk::Thinking: text = "Gaby is thinking..."; fg = theme::muted(); break;
+    case Talk::Speaking: text = "Gaby is speaking..."; bg = theme::gold(); fg = theme::bg(); break;
+  }
+  lv_label_set_text(talkLabel, text);
+  lv_obj_set_style_bg_color(talkButton, bg, 0);
+  lv_obj_set_style_text_color(talkLabel, fg, 0);
+  if (state == Talk::Listening) {
+    lv_obj_remove_flag(talkMeter, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    lv_obj_add_flag(talkMeter, LV_OBJ_FLAG_HIDDEN);
+  }
+  gaby_face::setTalking(glanceFace, state == Talk::Speaking);
+}
+
+void onTalkPressed(lv_event_t *) {
+  if (talkState != Talk::Idle) return;
+  hideBubble();
+  audio::startRecording();
+  pressedAt = millis();
+  setTalk(Talk::Listening);
+}
+
+void onTalkReleased(lv_event_t *) {
+  if (talkState != Talk::Listening) return;
+  if (millis() - pressedAt < 500) {
+    // A tap, not a question: costs nothing, but say how it works.
+    audio::cancelRecording();
+    setTalk(Talk::Idle);
+    showBubble("", "Hold the bar while you speak, then let go.", 4000);
+    return;
+  }
+  audio::stopRecording();  // the clip arrives via clipRecorded()
+  setTalk(Talk::Sending);
+}
+
+void tickMeter(lv_timer_t *) {
+  if (talkState == Talk::Listening) lv_bar_set_value(talkMeter, (int)(audio::level() * 100), LV_ANIM_OFF);
+}
+
+void buildTalk() {
+  talkButton = lv_button_create(glanceScreen);
+  lv_obj_set_pos(talkButton, M, 426);
+  lv_obj_set_size(talkButton, W - 2 * M, 46);
+  lv_obj_set_style_radius(talkButton, 23, 0);
+  lv_obj_set_style_shadow_width(talkButton, 0, 0);
+  lv_obj_set_style_border_color(talkButton, theme::gold(), 0);
+  lv_obj_set_style_border_width(talkButton, 2, 0);
+  lv_obj_add_event_cb(talkButton, onTalkPressed, LV_EVENT_PRESSED, nullptr);
+  lv_obj_add_event_cb(talkButton, onTalkReleased, LV_EVENT_RELEASED, nullptr);
+  lv_obj_add_event_cb(talkButton, onTalkReleased, LV_EVENT_PRESS_LOST, nullptr);
+  talkLabel = label(talkButton, &lv_font_montserrat_20, theme::text());
+  lv_obj_center(talkLabel);
+
+  // How loud you are, so it's obvious the microphone is on.
+  talkMeter = bar(talkButton, W - 2 * M - 60, 4, theme::bg());
+  lv_obj_set_style_bg_opa(talkMeter, LV_OPA_30, LV_PART_MAIN);
+  lv_bar_set_range(talkMeter, 0, 100);
+  lv_obj_align(talkMeter, LV_ALIGN_BOTTOM_MID, 0, 2);
+
+  // Speech bubble over the middle of the screen.
+  bubble = lv_obj_create(glanceScreen);
+  lv_obj_set_pos(bubble, M, 144);
+  lv_obj_set_size(bubble, W - 2 * M, 274);
+  lv_obj_set_style_bg_color(bubble, theme::panel2(), 0);
+  lv_obj_set_style_border_color(bubble, theme::gold(), 0);
+  lv_obj_set_style_border_width(bubble, 2, 0);
+  lv_obj_set_style_radius(bubble, 14, 0);
+  lv_obj_set_style_pad_all(bubble, 16, 0);
+  lv_obj_set_style_pad_row(bubble, 12, 0);
+  lv_obj_set_flex_flow(bubble, LV_FLEX_FLOW_COLUMN);
+  lv_obj_add_flag(bubble, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(bubble, [](lv_event_t *) { hideBubble(); }, LV_EVENT_CLICKED, nullptr);
+  bubbleHeard = label(bubble, &lv_font_montserrat_14, theme::muted());
+  lv_obj_set_width(bubbleHeard, lv_pct(100));
+  lv_label_set_long_mode(bubbleHeard, LV_LABEL_LONG_WRAP);
+  bubbleText = label(bubble, &lv_font_montserrat_28, theme::text());
+  lv_obj_set_width(bubbleText, lv_pct(100));
+  lv_label_set_long_mode(bubbleText, LV_LABEL_LONG_WRAP);
+  lv_obj_add_flag(bubble, LV_OBJ_FLAG_HIDDEN);
+
+  setTalk(Talk::Idle);
+  lv_timer_create(tickMeter, 50, nullptr);
+}
+
 void tickClock(lv_timer_t *) {
   time_t now = time(nullptr);
   if (now < 1700000000) return;  // NTP hasn't answered yet
@@ -243,8 +382,8 @@ void buildGlance() {
   glanceScreen = newScreen();
 
   // Header: Gaby, who you are, level and XP.
-  lv_obj_t *face = gaby_face::create(glanceScreen, 6, theme::bg());
-  lv_obj_set_pos(face, M, M);
+  glanceFace = gaby_face::create(glanceScreen, 6, theme::bg());
+  lv_obj_set_pos(glanceFace, M, M);
   nameLabel = label(glanceScreen, &lv_font_montserrat_28, theme::text());
   lv_obj_set_pos(nameLabel, 152, 18);
   clockLabel = label(glanceScreen, &lv_font_montserrat_28, theme::gold(), "--:--");
@@ -260,36 +399,36 @@ void buildGlance() {
 
   // Three tiles: gold (HP), budgets (mana), streak.
   const int tileW = (W - 2 * M - 2 * 8) / 3;
-  lv_obj_t *goldTile = tile(glanceScreen, M, 152, tileW, 92, "GOLD");
+  lv_obj_t *goldTile = tile(glanceScreen, M, 144, tileW, 88, "GOLD");
   goldValue = label(goldTile, &lv_font_montserrat_20, theme::text());
   lv_obj_set_pos(goldValue, 0, 22);
 
-  lv_obj_t *manaTile = tile(glanceScreen, M + tileW + 8, 152, tileW, 92, "MANA");
+  lv_obj_t *manaTile = tile(glanceScreen, M + tileW + 8, 144, tileW, 88, "MANA");
   manaValue = label(manaTile, &lv_font_montserrat_20, theme::mp());
   lv_obj_set_pos(manaValue, 0, 22);
   manaBar = bar(manaTile, tileW - 20, 6, theme::mp());
-  lv_obj_set_pos(manaBar, 0, 46);
+  lv_obj_set_pos(manaBar, 0, 44);
   manaSub = label(manaTile, &lv_font_montserrat_14, theme::muted());
   lv_obj_set_width(manaSub, tileW - 20);
   lv_label_set_long_mode(manaSub, LV_LABEL_LONG_DOT);
-  lv_obj_set_pos(manaSub, 0, 54);
+  lv_obj_set_pos(manaSub, 0, 50);
 
-  lv_obj_t *streakTile = tile(glanceScreen, M + 2 * (tileW + 8), 152, tileW, 92, "STREAK");
+  lv_obj_t *streakTile = tile(glanceScreen, M + 2 * (tileW + 8), 144, tileW, 88, "STREAK");
   streakValue = label(streakTile, &lv_font_montserrat_20, theme::gold());
   lv_obj_set_pos(streakValue, 0, 22);
 
   // Calories.
   calLabel = label(glanceScreen, &lv_font_montserrat_14, theme::text());
-  lv_obj_set_pos(calLabel, M, 254);
+  lv_obj_set_pos(calLabel, M, 240);
   calBar = bar(glanceScreen, W - 2 * M, 10, theme::ok());
-  lv_obj_set_pos(calBar, M, 274);
+  lv_obj_set_pos(calBar, M, 258);
 
   // Today's training: tap to tick.
   lv_obj_t *trainCaption = label(glanceScreen, &lv_font_montserrat_14, theme::muted(), "TODAY'S TRAINING");
-  lv_obj_set_pos(trainCaption, M, 296);
+  lv_obj_set_pos(trainCaption, M, 276);
   workoutsBox = lv_obj_create(glanceScreen);
-  lv_obj_set_pos(workoutsBox, M, 316);
-  lv_obj_set_size(workoutsBox, W - 2 * M, 60);
+  lv_obj_set_pos(workoutsBox, M, 294);
+  lv_obj_set_size(workoutsBox, W - 2 * M, 52);
   lv_obj_set_style_bg_opa(workoutsBox, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(workoutsBox, 0, 0);
   lv_obj_set_style_pad_all(workoutsBox, 0, 0);
@@ -299,13 +438,14 @@ void buildGlance() {
 
   // Coming up.
   lv_obj_t *eventsCaption = label(glanceScreen, &lv_font_montserrat_14, theme::muted(), "COMING UP");
-  lv_obj_set_pos(eventsCaption, M, 386);
+  lv_obj_set_pos(eventsCaption, M, 354);
   eventsLabel = label(glanceScreen, &lv_font_montserrat_20, theme::text());
   lv_obj_set_width(eventsLabel, W - 2 * M);
   lv_label_set_long_mode(eventsLabel, LV_LABEL_LONG_DOT);
-  lv_obj_set_height(eventsLabel, 3 * 24);
-  lv_obj_set_pos(eventsLabel, M, 404);
+  lv_obj_set_height(eventsLabel, 2 * 24);
+  lv_obj_set_pos(eventsLabel, M, 372);
 
+  buildTalk();
   lv_timer_create(tickClock, 1000, nullptr);
 }
 
@@ -320,7 +460,7 @@ void renderWorkouts(const api::Summary &s) {
   for (int i = 0; i < shown; i++) {
     const api::Workout &wk = s.workouts[i];
     lv_obj_t *b = lv_button_create(workoutsBox);
-    lv_obj_set_size(b, w, 56);
+    lv_obj_set_size(b, w, 52);
     lv_obj_add_flag(b, LV_OBJ_FLAG_CHECKABLE);
     lv_obj_set_style_bg_color(b, theme::panel2(), 0);
     lv_obj_set_style_border_color(b, theme::line(), 0);
@@ -351,7 +491,7 @@ void renderEvents(const api::Summary &s) {
   }
   lv_obj_set_style_text_color(eventsLabel, theme::text(), 0);
   char text[3 * 96] = "";
-  for (int i = 0; i < s.eventCount; i++) {
+  for (int i = 0; i < s.eventCount && i < 2; i++) {  // two lines fit above the talk bar
     char day[16], line[96];
     dayLabel(day, sizeof(day), s.events[i].date, s.date);
     snprintf(line, sizeof(line), "%s%s %s  %s", i ? "\n" : "", day, s.events[i].time, s.events[i].title);
@@ -441,6 +581,35 @@ void setOnline(bool online, const char *why) {
     // Before the first summary there's no glance screen to show it on.
     if (lv_screen_active() == connectScreen) lv_label_set_text(connectStatus, why);
   }
+}
+
+void clipRecorded(const uint8_t *wav, size_t size) {
+  net::Job job{net::JobType::Voice};
+  job.wav = wav;
+  job.wavSize = size;
+  net::submit(job);
+  setTalk(Talk::Sending);
+}
+
+void voiceThinking() { setTalk(Talk::Thinking); }
+
+void voiceReply(const char *heard, const char *text) {
+  showBubble(heard, text);
+}
+
+void voiceSpeaking() { setTalk(Talk::Speaking); }
+
+void voiceDone() {
+  setTalk(Talk::Idle);
+  if (!lv_obj_has_flag(bubble, LV_OBJ_FLAG_HIDDEN)) {
+    bubbleTimer = lv_timer_create(bubbleExpired, 15000, nullptr);  // time to read it, then back to the glance
+    lv_timer_set_repeat_count(bubbleTimer, 1);
+  }
+}
+
+void voiceFailed(const char *why) {
+  setTalk(Talk::Idle);
+  showBubble("", why, 6000);
 }
 
 }  // namespace ui

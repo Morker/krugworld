@@ -66,6 +66,9 @@ struct Face {
   lv_color_t background;
   bool closed;
   void *buffer;
+  lv_timer_t *blinkTimer;
+  lv_timer_t *talkTimer;
+  bool mouthOpen;
 };
 
 void block(Face *f, int px, int py, lv_color_t c, int fromRow = 0, int rows = -1) {
@@ -90,6 +93,16 @@ void drawEyes(Face *f) {
   lv_obj_invalidate(f->canvas);
 }
 
+// Mouth: the smile is row 11, columns 8-11. Open = dark mouth with the
+// tongue showing on the row below.
+constexpr int MOUTH_ROW = 11;
+
+void drawMouth(Face *f) {
+  for (int x = 8; x <= 11; x++) block(f, x, MOUTH_ROW, f->mouthOpen ? colour('K') : colour('M'));
+  for (int x = 9; x <= 10; x++) block(f, x, MOUTH_ROW + 1, f->mouthOpen ? colour('M') : colour('S'));
+  lv_obj_invalidate(f->canvas);
+}
+
 // Open most of the time, shut for a moment every few seconds.
 void blink(lv_timer_t *timer) {
   Face *f = static_cast<Face *>(lv_timer_get_user_data(timer));
@@ -98,10 +111,18 @@ void blink(lv_timer_t *timer) {
   lv_timer_set_period(timer, f->closed ? 140 : 2500 + random(0, 3500));
 }
 
+// Uneven timing reads as speech; a steady flap reads as a machine.
+void talk(lv_timer_t *timer) {
+  Face *f = static_cast<Face *>(lv_timer_get_user_data(timer));
+  f->mouthOpen = !f->mouthOpen;
+  drawMouth(f);
+  lv_timer_set_period(timer, f->mouthOpen ? 90 + random(0, 90) : 70 + random(0, 110));
+}
+
 void onDelete(lv_event_t *e) {
   Face *f = static_cast<Face *>(lv_event_get_user_data(e));
-  lv_timer_t *timer = static_cast<lv_timer_t *>(lv_obj_get_user_data(f->canvas));
-  if (timer) lv_timer_delete(timer);
+  lv_timer_delete(f->blinkTimer);
+  if (f->talkTimer) lv_timer_delete(f->talkTimer);
   heap_caps_free(f->buffer);
   delete f;
 }
@@ -113,7 +134,7 @@ lv_obj_t *create(lv_obj_t *parent, int scale, lv_color_t background) {
   // RGB565: two bytes a pixel. Kept in PSRAM; the internal RAM is precious.
   void *buffer = heap_caps_malloc(px * px * 2, MALLOC_CAP_SPIRAM);
 
-  Face *f = new Face{lv_canvas_create(parent), scale, background, false, buffer};
+  Face *f = new Face{lv_canvas_create(parent), scale, background, false, buffer, nullptr, nullptr, false};
   lv_canvas_set_buffer(f->canvas, buffer, px, px, LV_COLOR_FORMAT_RGB565);
   lv_canvas_fill_bg(f->canvas, background, LV_OPA_COVER);
 
@@ -125,10 +146,23 @@ lv_obj_t *create(lv_obj_t *parent, int scale, lv_color_t background) {
   }
   drawEyes(f);
 
-  lv_timer_t *timer = lv_timer_create(blink, 3000, f);
-  lv_obj_set_user_data(f->canvas, timer);
+  f->blinkTimer = lv_timer_create(blink, 3000, f);
+  lv_obj_set_user_data(f->canvas, f);
   lv_obj_add_event_cb(f->canvas, onDelete, LV_EVENT_DELETE, f);
   return f->canvas;
+}
+
+void setTalking(lv_obj_t *face, bool talking) {
+  Face *f = static_cast<Face *>(lv_obj_get_user_data(face));
+  if (!f || talking == (f->talkTimer != nullptr)) return;
+  if (talking) {
+    f->talkTimer = lv_timer_create(talk, 100, f);
+  } else {
+    lv_timer_delete(f->talkTimer);
+    f->talkTimer = nullptr;
+    f->mouthOpen = false;
+    drawMouth(f);
+  }
 }
 
 }  // namespace gaby_face

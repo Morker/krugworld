@@ -111,4 +111,13 @@ void tick() {
   lv_timer_handler();
 }
 
+void speaker(bool on) {
+  static bool ready = false;
+  if (!ready) {
+    expander->pinMode(3, OUTPUT);
+    ready = true;
+  }
+  expander->digitalWrite(3, on ? HIGH : LOW);
+}
+
 }  // namespace board

@@ -64,4 +64,20 @@ Status fetchSummary(const char *token, Summary &out);
 
 Status setWorkoutDone(const char *token, long workoutId, bool done);
 
+struct VoiceReply {
+  char heard[160];     // what the transcriber made of it
+  char reply[320];     // Gaby's in-character answer (what she says aloud)
+  char subtitle[320];  // the plain one-line version; may be empty
+  char speech[96];     // path of the one-time audio link
+};
+
+/** Uploads a WAV clip; Gaby hears it, acts, and answers. On failure `message` says why. */
+Status voice(const char *token, const uint8_t *wav, size_t size, VoiceReply &out, char *message, size_t messageSize);
+
+/**
+ * Streams a reply's audio (16-bit mono PCM at 24 kHz) to `onSamples` as it
+ * arrives, so she starts talking before the whole sentence has downloaded.
+ */
+Status speak(const char *token, const char *path, void (*onSamples)(const int16_t *samples, size_t count));
+
 }  // namespace api

@@ -125,6 +125,102 @@ Status fetchSummary(const char *token, Summary &out) {
   return Status::Ok;
 }
 
+Status voice(const char *token, const uint8_t *wav, size_t size, VoiceReply &out, char *message, size_t messageSize) {
+  HTTPClient http;
+  // Hearing, thinking (maybe a few tool calls) and answering takes seconds.
+  http.setTimeout(45000);
+  http.begin(baseUrl + "/api/device/voice");
+  http.addHeader("Authorization", String("Bearer ") + token);
+  http.addHeader("Content-Type", "audio/wav");
+  int httpCode = http.POST(const_cast<uint8_t *>(wav), size);
+  String response = httpCode > 0 ? http.getString() : String();
+  http.end();
+
+  JsonDocument doc;
+  deserializeJson(doc, response);
+  Status status = statusFor(httpCode);
+  if (status == Status::Ok) {
+    copy(out.heard, sizeof(out.heard), doc["transcript"]);
+    copy(out.reply, sizeof(out.reply), doc["reply"]);
+    copy(out.subtitle, sizeof(out.subtitle), doc["subtitle"]);
+    copy(out.speech, sizeof(out.speech), doc["speech"]);
+  } else if (doc["message"].is<const char *>()) {
+    copy(message, messageSize, doc["message"]);  // e.g. "I heard nothing, traveller."
+  } else if (status == Status::NetworkError) {
+    snprintf(message, messageSize, "Can't reach KrugWorld");
+  } else {
+    snprintf(message, messageSize, "KrugWorld answered %d", httpCode);
+  }
+  return status;
+}
+
+namespace {
+
+/**
+ * A Stream that turns bytes into 16-bit samples and hands them on.
+ * HTTPClient::writeToStream does the HTTP side (chunked or not); this only
+ * has to cope with a sample split across two network reads.
+ */
+class PcmSink : public Stream {
+ public:
+  explicit PcmSink(void (*onSamples)(const int16_t *, size_t)) : onSamples(onSamples) {}
+
+  size_t write(uint8_t b) override { return write(&b, 1); }
+
+  size_t write(const uint8_t *data, size_t size) override {
+    size_t taken = size;
+    if (hasOdd && size) {
+      uint8_t pair[2] = {odd, data[0]};
+      onSamples(reinterpret_cast<const int16_t *>(pair), 1);
+      data++;
+      size--;
+      hasOdd = false;
+    }
+    size_t whole = size / 2;
+    // The network buffer isn't necessarily 2-byte aligned; copy through one that is.
+    while (whole) {
+      size_t n = min<size_t>(whole, 512);
+      memcpy(aligned, data, n * 2);
+      onSamples(aligned, n);
+      data += n * 2;
+      whole -= n;
+    }
+    if (size % 2) {
+      odd = data[0];
+      hasOdd = true;
+    }
+    return taken;
+  }
+
+  int available() override { return 0; }
+  int read() override { return -1; }
+  int peek() override { return -1; }
+  void flush() override {}
+
+ private:
+  void (*onSamples)(const int16_t *, size_t);
+  int16_t aligned[512];
+  uint8_t odd = 0;
+  bool hasOdd = false;
+};
+
+}  // namespace
+
+Status speak(const char *token, const char *path, void (*onSamples)(const int16_t *samples, size_t count)) {
+  HTTPClient http;
+  http.setTimeout(20000);
+  http.begin(baseUrl + path);
+  http.addHeader("Authorization", String("Bearer ") + token);
+  int httpCode = http.GET();
+  Status status = statusFor(httpCode);
+  if (status == Status::Ok) {
+    PcmSink sink(onSamples);
+    http.writeToStream(&sink);
+  }
+  http.end();
+  return status;
+}
+
 Status setWorkoutDone(const char *token, long workoutId, bool done) {
   HTTPClient http;
   http.setTimeout(TIMEOUT_MS);

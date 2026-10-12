@@ -54,7 +54,7 @@ public class StewardProperties {
         /** Blank lets the model detect it, which suits English/Malay mixed in one sentence. */
         private String language = "";
         private String speechModel = "gpt-4o-mini-tts";
-        private String voice = "marin";
+        private String voice = "coral";
         private String instructions = """
                 Speak as Gaby, a cheerful, quick-witted young steward in a medieval keep. Warm and \
                 a little playful, brisk rather than slow. She is Malaysian: pronounce Malay words \

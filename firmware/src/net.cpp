@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <time.h>
 
+#include "audio.h"
 #include "secrets.h"
 
 namespace net {
@@ -21,11 +22,12 @@ QueueHandle_t updates;
 Preferences prefs;  // NVS flash: survives reboots and reflashing the app
 char token[96] = "";
 
-void send(UpdateType type, const char *text = "", const api::Summary *summary = nullptr) {
+void send(UpdateType type, const char *text = "", const api::Summary *summary = nullptr, const char *heard = "") {
   // Static: an Update carries a whole Summary, too big for the task's stack.
   static Update u;
   u.type = type;
   strlcpy(u.text, text, sizeof(u.text));
+  strlcpy(u.heard, heard, sizeof(u.heard));
   if (summary) u.summary = *summary;
   xQueueSend(updates, &u, pdMS_TO_TICKS(500));
 }
@@ -73,6 +75,46 @@ void refresh() {
   }
 }
 
+void playSamples(const int16_t *samples, size_t count) {
+  static bool started = false;
+  if (!samples) {  // reset between replies
+    started = false;
+    return;
+  }
+  if (!started) {
+    started = true;
+    send(UpdateType::VoiceSpeaking);
+  }
+  audio::play(samples, count);
+}
+
+/** One spoken exchange: upload the clip, show her words, play her voice. */
+void talk(const Job &job) {
+  send(UpdateType::VoiceThinking);
+  static api::VoiceReply reply;
+  char message[160] = "";
+  api::Status status = api::voice(token, job.wav, job.wavSize, reply, message, sizeof(message));
+  if (status == api::Status::Unauthorized) {
+    forgetToken();
+    send(UpdateType::NeedsPairing);
+    return;
+  }
+  if (status != api::Status::Ok) {
+    send(UpdateType::VoiceFailed, message);
+    return;
+  }
+  // Show the plain subtitle when there is one; she *says* the in-character reply.
+  send(UpdateType::VoiceReply, reply.subtitle[0] ? reply.subtitle : reply.reply, nullptr, reply.heard);
+
+  playSamples(nullptr, 0);
+  audio::beginPlayback();
+  api::speak(token, reply.speech, playSamples);
+  audio::endPlayback();
+  send(UpdateType::VoiceDone);
+
+  refresh();  // she may have logged money, a meal, an event...
+}
+
 void handle(const Job &job) {
   if (!ensureWifi()) return;
   switch (job.type) {
@@ -102,6 +144,9 @@ void handle(const Job &job) {
     case JobType::Forget:
       forgetToken();
       send(UpdateType::NeedsPairing);
+      break;
+    case JobType::Voice:
+      if (token[0]) talk(job);
       break;
   }
 }

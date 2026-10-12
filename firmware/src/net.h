@@ -11,13 +11,15 @@
  */
 namespace net {
 
-enum class JobType { Pair, Refresh, SetWorkoutDone, Forget };
+enum class JobType { Pair, Refresh, SetWorkoutDone, Forget, Voice };
 
 struct Job {
   JobType type;
-  char code[8];  // Pair
-  long id;       // SetWorkoutDone
-  bool done;     // SetWorkoutDone
+  char code[8];        // Pair
+  long id;             // SetWorkoutDone
+  bool done;           // SetWorkoutDone
+  const uint8_t *wav;  // Voice: the clip, owned by the audio module
+  size_t wavSize;
 };
 
 enum class UpdateType {
@@ -28,11 +30,17 @@ enum class UpdateType {
   PairFailed,    // text = the server's reason
   Paired,        // text = username
   Summary,       // summary is fresh
+  VoiceThinking, // clip uploaded; Gaby is working on it
+  VoiceReply,    // text = what she says, heard = what she heard
+  VoiceSpeaking, // her voice is coming out of the speaker
+  VoiceDone,     // finished talking
+  VoiceFailed,   // text = why
 };
 
 struct Update {
   UpdateType type;
-  char text[128];
+  char text[320];
+  char heard[160];
   api::Summary summary;
 };
 
