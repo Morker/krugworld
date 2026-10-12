@@ -1,5 +1,7 @@
-// Barnaby, the Steward, as 20×20 pixel art. Each letter is one pixel's colour;
+// Gaby, the Steward, as 20×20 pixel art. Each letter is one pixel's colour;
 // eyes and mouth are drawn as separate layers so they can blink and talk.
+// Same cap, feather, spectacles and coat as the first steward, so she's
+// recognisably the same character family: auburn braids, rosy cheeks, a smile.
 
 const ART = [
   '.............FF.....',
@@ -7,20 +9,20 @@ const ART = [
   '.....KKKKKKKFKK.....',
   '....KHHHHHHHHHHK....',
   '...KHHHHHHHHHHHHK...',
-  '...KhhhhhhhhhhhhK...',
-  '...KSSSSSSSSSSSSK...',
-  '...KSGGGGSSGGGGSK...',
-  '...KSGEWGGGGEWGSK...',
-  '...KSGGGGSSGGGGSK...',
-  '..KSSSSSSssSSSSSSK..',
-  '..KsSBBBBssBBBBSsK..',
-  '...KBBBBBMMBBBBBK...',
-  '...KBBBBBBBBBBBBK...',
-  '...KbBBBBBBBBBBbK...',
-  '....KbBBBBBBBBbK....',
-  '..KKCKbbBBBBbbKCKK..',
-  '.KCCCCKbbBBbbKCCCCK.',
-  'KCCCCLCKKbbKKCLCCCCK',
+  '..KRhhhhhhhhhhhhRK..',
+  '..KRRSSSSSSSSSSRRK..',
+  '..KRSGGGGSSGGGGSRK..',
+  '..KRSGEWGGGGEWGSRK..',
+  '..KRSGGGGSSGGGGSRK..',
+  '..KRSPSSSssSSSPSRK..',
+  '..KRRSSSMMMMSSSRRK..',
+  '..KRRKSSSSSSSSKRRK..',
+  '..KRRRKSSSSSSKRRRK..',
+  '..KRRRKKSSSSKKRRRK..',
+  '..KRrRKAAAAAAKRrRK..',
+  '.KCRrRAAALLAAARrRCK.',
+  'KCCRRCCKAAAAKCCRRCCK',
+  'KCCCCLCCKAAKCCLCCCCK',
   'KCCcCLCCCKKCCCLCcCCK',
 ]
 
@@ -29,12 +31,14 @@ const COLOURS: Record<string, string> = {
   H: '#7a2e3a', // cap
   h: '#561f28', // cap band
   F: 'var(--accent)', // feather
+  R: '#a4492a', // hair
+  r: '#7a3220', // braid shadow
   S: '#f1c79e', // skin
   s: '#d9a37a', // skin shade
+  P: '#e8908a', // blush
   G: '#c9a227', // spectacles
-  B: '#ece8de', // beard
-  b: '#b8b2a6', // beard shade
-  M: '#9b3d2e', // mouth
+  M: '#b8484a', // smile
+  A: '#ece8de', // lace collar
   C: '#2f5d62', // coat
   c: '#23474b', // coat shade
   L: 'var(--accent)', // gold trim
@@ -59,14 +63,14 @@ function runs(keep: (ch: string) => boolean, recolour?: (ch: string) => string):
   return out
 }
 
-// Under the eyes and mouth sits plain skin and beard, so blinking shows a closed eye, not a hole.
-const BODY = runs((ch) => ch !== '.', (ch) => (ch === 'E' || ch === 'W' ? 'S' : ch === 'M' ? 'B' : ch))
+// Under the eyes and mouth sits plain skin, so blinking shows a closed eye, not a hole.
+const BODY = runs((ch) => ch !== '.', (ch) => (ch === 'E' || ch === 'W' || ch === 'M' ? 'S' : ch))
 const EYES = runs((ch) => ch === 'E' || ch === 'W', (ch) => (ch === 'W' ? '#ffffff' : '#1b1410'))
 const MOUTH = runs((ch) => ch === 'M')
 
 export type Mood = 'idle' | 'thinking' | 'talking'
 
-export function Portrait({ size = 64, mood = 'idle', title = 'Barnaby the Steward' }: {
+export function Portrait({ size = 64, mood = 'idle', title = 'Gaby the Steward' }: {
   size?: number
   mood?: Mood
   title?: string

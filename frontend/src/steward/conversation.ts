@@ -4,12 +4,12 @@ import type { StewardTurn } from '../api/types'
 // One conversation shared by the docked panel and the Steward page, kept in
 // this tab's sessionStorage (the server keeps no chat state).
 
-const KEY = 'krugworld.steward'
+const KEY = 'krugworld.gaby'
 
 export const GREETING: StewardTurn = {
   role: 'assistant',
-  text: 'Well met, traveller! Barnaby, at thy service. I keep thy ledger, thy almanac, thy feast and thy training. What wouldst thou have done?',
-  subtitle: "Hi, I'm Barnaby. I can log spending, add events, track meals and workouts, and more. What do you need?",
+  text: 'Salam sejahtera, traveller! Gaby here, at thy service. I keep thy ledger, almanac, feast and training. Apa yang boleh hamba bantu hari ini?',
+  subtitle: "Hi, I'm Gaby. I can log spending, add events, track meals and workouts, and more, in English or Malay. What do you need?",
 }
 
 type State = { turns: StewardTurn[]; pending: boolean; repliedAt: number }

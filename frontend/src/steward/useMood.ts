@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useConversation } from './conversation'
 import type { Mood } from './Portrait'
 
-/** Barnaby's mood: thinking while a reply is on its way, talking for a moment after one lands. */
+/** Gaby's mood: thinking while a reply is on its way, talking for a moment after one lands. */
 export function useMood(): Mood {
   const { pending, repliedAt } = useConversation()
   const [quietSince, setQuietSince] = useState(repliedAt)

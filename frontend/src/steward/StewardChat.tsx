@@ -6,7 +6,7 @@ import { errorText } from '../lib/errors'
 import { conversation, useConversation } from './conversation'
 import { Portrait } from './Portrait'
 
-const SUGGESTIONS = ['spent 12 on nasi lemak', 'what is on my calendar this week?', 'had roti canai for breakfast', 'how much budget is left?']
+const SUGGESTIONS = ['spent 12 on nasi lemak', 'apa ada dalam calendar minggu ni?', 'had roti canai for breakfast', 'berapa lagi budget makan?']
 
 /** The conversation and its input box: used by the docked panel and the Steward page alike. */
 export function StewardChat({ compact = false }: { compact?: boolean }) {
@@ -41,7 +41,7 @@ export function StewardChat({ compact = false }: { compact?: boolean }) {
     return (
       <div className="steward-asleep">
         <Portrait size={compact ? 72 : 96} />
-        <p><b>Barnaby is resting.</b> He has no key to serve with yet.</p>
+        <p><b>Gaby is resting.</b> She has no key to serve with yet.</p>
         <p className="small muted">
           Whoever runs this server sets <code>OPENAI_API_KEY</code> and restarts the app
           (or <code>ANTHROPIC_API_KEY</code> with <code>KRUGWORLD_STEWARD_PROVIDER=anthropic</code> for Claude).
@@ -66,7 +66,7 @@ export function StewardChat({ compact = false }: { compact?: boolean }) {
         {pending && (
           <div className="chat-row assistant">
             <Portrait size={28} mood="thinking" title="" />
-            <div className="bubble assistant thinking-dots" aria-label="Barnaby is thinking"><span /><span /><span /></div>
+            <div className="bubble assistant thinking-dots" aria-label="Gaby is thinking"><span /><span /><span /></div>
           </div>
         )}
         {turns.length === 1 && !pending && (
@@ -77,8 +77,8 @@ export function StewardChat({ compact = false }: { compact?: boolean }) {
         <div ref={end} />
       </div>
       <form className="chat-input" onSubmit={submit}>
-        <input aria-label="Message Barnaby" value={message} maxLength={1000} autoFocus={!compact}
-               placeholder="Ask Barnaby anything…" onChange={(e) => setMessage(e.target.value)} />
+        <input aria-label="Message Gaby" value={message} maxLength={1000} autoFocus={!compact}
+               placeholder="Ask Gaby anything… (English or BM)" onChange={(e) => setMessage(e.target.value)} />
         <button type="submit" className="primary" disabled={pending || !message.trim()} aria-label="Send">
           <IconSend size={18} />
         </button>

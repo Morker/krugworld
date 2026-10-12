@@ -8,7 +8,7 @@ import { StewardChat } from './StewardChat'
 import { useMood } from './useMood'
 
 /**
- * Barnaby, always one click away: a summon button in the corner, and a
+ * Gaby, always one click away: a summon button in the corner, and a
  * panel that docks in the right-hand column on wide screens (the page
  * shrinks to make room), slides over the page on narrower ones, and goes
  * full-screen on phones.
@@ -26,19 +26,19 @@ export function StewardDock({ open, onToggle }: { open: boolean; onToggle: (open
 
   if (!open) {
     return (
-      <button className="summon" onClick={() => onToggle(true)} aria-label="Talk to Barnaby the Steward">
+      <button className="summon" onClick={() => onToggle(true)} aria-label="Talk to Gaby the Steward">
         <Portrait size={52} mood={mood} title="" />
-        <span className="summon-label">Ask Barnaby</span>
+        <span className="summon-label">Ask Gaby</span>
       </button>
     )
   }
 
   return (
-    <aside className="dock" aria-label="Barnaby the Steward">
+    <aside className="dock" aria-label="Gaby the Steward">
       <header className="dock-head">
         <div className="dock-portrait"><Portrait size={72} mood={mood} /></div>
         <div className="grow">
-          <h2 style={{ margin: 0 }}>Barnaby</h2>
+          <h2 style={{ margin: 0 }}>Gaby</h2>
           <div className="small muted">
             {mood === 'thinking' ? 'pondering…' : status?.ready ? 'Steward of the realm' : 'resting'}
           </div>

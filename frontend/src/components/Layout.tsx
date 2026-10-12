@@ -19,7 +19,7 @@ export function Layout() {
   const logout = useLogout()
   const { pathname } = useLocation()
   const current = groupFor(pathname)
-  // Remembered per browser: if you like Barnaby docked, he stays docked.
+  // Remembered per browser: if you like Gaby docked, she stays docked.
   const [dockOpen, setDockOpen] = useState(readDock)
   const onStewardPage = pathname.startsWith('/steward')
   const docked = dockOpen && !onStewardPage

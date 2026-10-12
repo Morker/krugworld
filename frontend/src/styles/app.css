@@ -69,7 +69,7 @@ h2 { font-size: var(--fs-h2); line-height: 1.25; margin-bottom: 6px; }
    growing (lines of text and bars get hard to read), and then it centres. */
 .main {
   padding: 18px 22px 28px; width: 100%; max-width: 1760px; margin: 0 auto; min-width: 0;
-  /* Layouts inside respond to the room the page actually has (less when Barnaby is docked). */
+  /* Layouts inside respond to the room the page actually has (less when Gaby is docked). */
   container: main / inline-size;
 }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
@@ -336,7 +336,7 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
 .ticker { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
 .ticker .item { display: flex; flex-direction: column; }
 
-/* ---------- Barnaby: portrait, summon button, dock ---------- */
+/* ---------- Gaby: portrait, summon button, dock ---------- */
 
 .portrait { display: block; flex: 0 0 auto; image-rendering: pixelated; }
 .portrait .eyes, .portrait .mouth { transform-box: fill-box; transform-origin: center; }
