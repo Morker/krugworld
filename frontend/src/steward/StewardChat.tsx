@@ -43,8 +43,8 @@ export function StewardChat({ compact = false }: { compact?: boolean }) {
         <Portrait size={compact ? 72 : 96} />
         <p><b>Barnaby is resting.</b> He has no key to serve with yet.</p>
         <p className="small muted">
-          Whoever runs this server sets <code>ANTHROPIC_API_KEY</code> (Claude), or <code>OPENAI_API_KEY</code> with
-          {' '}<code>KRUGWORLD_STEWARD_PROVIDER=openai</code>, and restarts the app.
+          Whoever runs this server sets <code>OPENAI_API_KEY</code> and restarts the app
+          (or <code>ANTHROPIC_API_KEY</code> with <code>KRUGWORLD_STEWARD_PROVIDER=anthropic</code> for Claude).
         </p>
       </div>
     )

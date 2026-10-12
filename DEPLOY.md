@@ -32,8 +32,8 @@ writes `deploy\krugworld.jar`.
    ```
 4. **Secrets:** on the server, `cp /opt/krugworld/.env.example /opt/krugworld/.env`
    and set `POSTGRES_PASSWORD` (`openssl rand -base64 24`). For the Steward,
-   set `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` with
-   `KRUGWORLD_STEWARD_PROVIDER=openai`. After editing `.env`, apply it with
+   set `OPENAI_API_KEY` (the default provider; `KRUGWORLD_STEWARD_PROVIDER=anthropic`
+   plus `ANTHROPIC_API_KEY` switches its brain to Claude). After editing `.env`, apply it with
    `docker compose up -d app` (a plain `restart` does not re-read `.env`).
    Check the file stays one line per key: a pasted key with a stray newline
    breaks the header it's sent in.

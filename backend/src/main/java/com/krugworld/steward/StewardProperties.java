@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "krugworld.steward")
 public class StewardProperties {
 
-    private String provider = "anthropic";
+    private String provider = "openai";
     private final Anthropic anthropic = new Anthropic();
     private final OpenAi openai = new OpenAi();
     private int dailyLimitPerUser = 40;
