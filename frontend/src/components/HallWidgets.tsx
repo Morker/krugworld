@@ -17,7 +17,7 @@ import type { Icon } from '@tabler/icons-react'
 import { useMe } from '../api/hooks'
 import { useLifeToday, useSetWorkoutDone } from '../api/lifeHooks'
 import { relativeDay, time, today } from '../lib/format'
-import { Bar, Empty, Panel } from './ui'
+import { Bar, Panel } from './ui'
 
 // ---------------- weather (Open-Meteo: free, no key, called from the browser) ----------------
 
@@ -30,7 +30,8 @@ function weatherLook(code: number): { label: string; icon: Icon } {
   return { label: 'Unsettled', icon: IconCloud }
 }
 
-export function WeatherCard() {
+/** A one-line weather reading for the Hall's title bar. */
+export function WeatherChip() {
   const me = useMe().data
   const place = me?.weather
   const unit = me?.tempUnit ?? 'C'
@@ -58,31 +59,27 @@ export function WeatherCard() {
 
   if (!place) {
     return (
-      <Panel title="The skies">
-        <p className="muted small" style={{ margin: 0 }}>
-          <IconMapPin size={14} aria-hidden="true" /> <Link to="/settings">Set your location</Link> to see the weather here.
-        </p>
-      </Panel>
+      <Link to="/settings" className="mini small">
+        <IconMapPin size={16} aria-hidden="true" /> Set your location for weather
+      </Link>
     )
   }
   const w = weather.data
   const look = w ? weatherLook(w.current.weather_code) : null
   return (
-    <Panel title="The skies">
-      {weather.isError && <p className="muted small">The skies are clouded from view right now.</p>}
-      {!w && !weather.isError && <p className="muted small">Reading the skies…</p>}
-      {w && look && (
-        <div className="row-start">
-          <look.icon size={40} stroke={1.5} color="var(--accent)" aria-hidden="true" />
-          <div>
-            <div className="num" style={{ fontSize: '1.6em', lineHeight: 1 }}>{Math.round(w.current.temperature_2m)}°{unit}</div>
-            <div className="small muted">
-              {look.label} · {Math.round(w.daily.temperature_2m_min[0])}–{Math.round(w.daily.temperature_2m_max[0])}° · {place.place}
-            </div>
+    <div className="mini" title={place.place}>
+      {look ? <look.icon size={26} stroke={1.6} color="var(--accent)" aria-hidden="true" /> : <IconCloud size={26} aria-hidden="true" />}
+      {w && look ? (
+        <div>
+          <div className="num" style={{ lineHeight: 1.1 }}>{Math.round(w.current.temperature_2m)}°{unit} <span className="muted small">{look.label}</span></div>
+          <div className="small muted ellipsis">
+            {Math.round(w.daily.temperature_2m_min[0])}–{Math.round(w.daily.temperature_2m_max[0])}° · {place.place.split(',')[0]}
           </div>
         </div>
+      ) : (
+        <span className="small muted">{weather.isError ? 'Skies clouded from view' : 'Reading the skies…'}</span>
       )}
-    </Panel>
+    </div>
   )
 }
 
@@ -90,7 +87,7 @@ export function WeatherCard() {
 
 type Prices = Record<'bitcoin' | 'tether-gold', { usd: number; usd_24h_change: number }>
 
-export function MarketCard() {
+export function MarketChip() {
   const prices = useQuery({
     queryKey: ['markets'],
     staleTime: 10 * 60_000,
@@ -101,17 +98,15 @@ export function MarketCard() {
     },
   })
   const p = prices.data
+  if (!p) {
+    return <div className="mini small muted">{prices.isError ? 'Markets quiet' : 'Checking markets…'}</div>
+  }
   return (
-    <Panel title="The markets">
-      {prices.isError && <p className="muted small">The market criers are silent right now.</p>}
-      {!p && !prices.isError && <p className="muted small">Checking the markets…</p>}
-      {p && (
-        <div className="ticker">
-          <Price label="Gold / oz" value={p['tether-gold']?.usd} change={p['tether-gold']?.usd_24h_change} />
-          <Price label="Bitcoin" value={p.bitcoin?.usd} change={p.bitcoin?.usd_24h_change} />
-        </div>
-      )}
-    </Panel>
+    <div className="mini">
+      <Price label="Gold" value={p['tether-gold']?.usd} change={p['tether-gold']?.usd_24h_change} />
+      <span className="mini-divider" />
+      <Price label="BTC" value={p.bitcoin?.usd} change={p.bitcoin?.usd_24h_change} />
+    </div>
   )
 }
 
@@ -120,67 +115,60 @@ function Price({ label, value, change }: { label: string; value?: number; change
   const up = (change ?? 0) >= 0
   const Arrow = up ? IconArrowUpRight : IconArrowDownRight
   return (
-    <div className="item">
-      <span className="small muted">{label}</span>
-      <span className="num gold" style={{ fontSize: '1.3em' }}>${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
-      {change !== undefined && (
-        <span className={`small num ${up ? 'pos' : 'neg'}`}><Arrow size={14} aria-hidden="true" /> {Math.abs(change).toFixed(2)}% 24h</span>
-      )}
+    <div>
+      <div className="small muted" style={{ lineHeight: 1.1 }}>{label}</div>
+      <div className="num">
+        <span className="gold">${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+        {change !== undefined && (
+          <span className={`small ${up ? 'pos' : 'neg'}`}> <Arrow size={12} aria-hidden="true" />{Math.abs(change).toFixed(1)}%</span>
+        )}
+      </div>
     </div>
   )
 }
 
-// ---------------- today: meals, training, what's coming ----------------
+// ---------------- today: meals, training and what's coming, in one panel ----------------
 
-export function TodayRow() {
+export function TodayPanel() {
   const life = useLifeToday()
   const tick = useSetWorkoutDone()
   const t = life.data
   if (!t) return null
   const over = t.calories > t.calorieGoal
   return (
-    <div className="grid grid-3" style={{ marginTop: 14 }}>
-      <Panel title="Today's feast" action={<Link to="/vitals" className="small">Vitals</Link>}>
-        <div className="row">
-          <span className={`num ${over ? 'neg' : 'gold'}`} style={{ fontSize: '1.4em' }}>{t.calories.toLocaleString()} kcal</span>
-          <span className="muted small">of {t.calorieGoal.toLocaleString()}</span>
+    <Panel title="Today" action={<Link to="/vitals" className="small">Vitals</Link>}>
+      <div className="row small">
+        <span>Feast</span>
+        <span className={`num ${over ? 'neg' : 'gold'}`}>{t.calories.toLocaleString()} <span className="muted">/ {t.calorieGoal.toLocaleString()} kcal</span></span>
+      </div>
+      <Bar value={t.calories} max={t.calorieGoal} color={over ? 'var(--hp)' : 'var(--ok)'} thin label="Calories today" />
+
+      <div className="today-label">Training</div>
+      {t.workouts.length === 0 && <div className="small muted">Rest day: nothing planned.</div>}
+      {t.workouts.map((w) => (
+        <button key={w.id} className="ghost today-tick" aria-pressed={w.done}
+                onClick={() => tick.mutate({ id: w.id, date: today(), done: !w.done })}>
+          {w.done ? <IconSquareCheck size={18} color="var(--ok)" /> : <IconSquare size={18} />}
+          <span style={{ textDecoration: w.done ? 'line-through' : 'none' }}>{w.name}</span>
+        </button>
+      ))}
+
+      <div className="today-label row">
+        <span>Coming up</span>
+        <Link to="/calendar" className="small">Calendar</Link>
+      </div>
+      {t.upcoming.length === 0 && <div className="small muted">Nothing scheduled.</div>}
+      {t.upcoming.slice(0, 3).map((e) => (
+        <div key={e.id} className="row small" style={{ padding: '2px 0' }}>
+          <span className="ellipsis">{e.title}</span>
+          <span className="muted" style={{ whiteSpace: 'nowrap' }}>{relativeDay(e.occursOn)}{e.atTime ? ` ${time(e.atTime)}` : ''}</span>
         </div>
-        <Bar value={t.calories} max={t.calorieGoal} color={over ? 'var(--hp)' : 'var(--ok)'} label="Calories today" />
-      </Panel>
-
-      <Panel title="Today's training" action={<Link to="/vitals" className="small">Plan</Link>}>
-        {t.workouts.length === 0 ? (
-          <Empty>No training set for today.</Empty>
-        ) : (
-          t.workouts.map((w) => (
-            <button key={w.id} className="ghost" style={{ width: '100%', justifyContent: 'flex-start' }} aria-pressed={w.done}
-                    onClick={() => tick.mutate({ id: w.id, date: today(), done: !w.done })}>
-              {w.done ? <IconSquareCheck size={20} color="var(--ok)" /> : <IconSquare size={20} />}
-              <span style={{ textDecoration: w.done ? 'line-through' : 'none' }}>{w.name}</span>
-            </button>
-          ))
-        )}
-      </Panel>
-
-      <Panel title="Coming up" action={<Link to="/calendar" className="small">Calendar</Link>}>
-        {t.upcoming.length === 0 ? (
-          <Empty>Nothing scheduled.</Empty>
-        ) : (
-          <div className="list">
-            {t.upcoming.map((e) => (
-              <div key={e.id} className="list-row" style={{ padding: '4px 2px' }}>
-                <span className="grow title">{e.title}</span>
-                <span className="small muted">{relativeDay(e.occursOn)}{e.atTime ? ` ${time(e.atTime)}` : ''}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {t.ideasInProgress > 0 && (
-          <p className="small muted" style={{ margin: '8px 0 0' }}>
-            <IconBulb size={14} aria-hidden="true" /> <Link to="/workshop">{t.ideasInProgress} idea{t.ideasInProgress > 1 ? 's' : ''} on the anvil</Link>
-          </p>
-        )}
-      </Panel>
-    </div>
+      ))}
+      {t.ideasInProgress > 0 && (
+        <div className="small muted" style={{ marginTop: 6 }}>
+          <IconBulb size={14} aria-hidden="true" /> <Link to="/workshop">{t.ideasInProgress} idea{t.ideasInProgress > 1 ? 's' : ''} on the anvil</Link>
+        </div>
+      )}
+    </Panel>
   )
 }

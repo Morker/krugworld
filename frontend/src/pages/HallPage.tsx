@@ -4,7 +4,7 @@ import { IconArrowDownLeft, IconArrowUpRight, IconArrowsLeftRight, IconBolt, Ico
 import { useCharacter } from '../api/hooks'
 import type { CharacterSheet, Entry } from '../api/types'
 import { EntryForm } from '../components/EntryForm'
-import { MarketCard, TodayRow, WeatherCard } from '../components/HallWidgets'
+import { MarketChip, TodayPanel, WeatherChip } from '../components/HallWidgets'
 import { BadgeIcon, PlainIcon } from '../components/icons'
 import { Bar, Empty, ErrorLine, Loading, Money, Panel } from '../components/ui'
 import { useToast } from '../components/useToast'
@@ -26,35 +26,36 @@ export function HallPage() {
 
   return (
     <>
+      {/* Weather and markets ride in the title bar rather than taking a row of their own. */}
       <div className="page-head">
         <div>
           <h1>The Hall</h1>
           <div className="sub">{greeting()}, {sheet.username} · {monthLabel(currentMonth())}</div>
         </div>
-        <button className="primary" onClick={() => setAdding(true)}>
-          <IconPlus size={18} aria-hidden="true" /> Log entry
-        </button>
+        <div className="head-widgets">
+          <WeatherChip />
+          <MarketChip />
+          <button className="primary" onClick={() => setAdding(true)}>
+            <IconPlus size={18} aria-hidden="true" /> Log entry
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-2" style={{ marginBottom: 14 }}>
-        <WeatherCard />
-        <MarketCard />
-      </div>
-
-      <div className="grid sheet">
-        <CharacterCard sheet={sheet} />
+      {/* Three columns when there's room (laptops up), two on medium, one on phones. */}
+      <div className="hall">
+        <div className="stack">
+          <CharacterCard sheet={sheet} />
+          <StreakCard sheet={sheet} />
+        </div>
         <div className="stack">
           <VitalStats sheet={sheet} />
           <ActiveQuests sheet={sheet} />
         </div>
+        <div className="stack hall-today">
+          <TodayPanel />
+          <LootLog loot={sheet.loot.slice(0, 5)} />
+        </div>
       </div>
-
-      <div className="grid sheet" style={{ marginTop: 14 }}>
-        <StreakCard sheet={sheet} />
-        <LootLog loot={sheet.loot} />
-      </div>
-
-      <TodayRow />
 
       {adding && (
         <EntryForm onClose={() => setAdding(false)} onSaved={(isNew) => isNew && showToast('Logged · +5 XP')} />
@@ -74,19 +75,19 @@ function CharacterCard({ sheet }: { sheet: CharacterSheet }) {
           <div className="avatar" aria-hidden="true">{sheet.username.charAt(0).toUpperCase()}</div>
         </div>
         <span className="level-pill">Lv {sheet.level}</span>
-        <h2 style={{ marginTop: 8, marginBottom: 0 }}>{sheet.username}</h2>
-        <div className="muted">{sheet.title}</div>
-        <div className="row small muted" style={{ marginTop: 10 }}>
+        <h2 style={{ marginTop: 6, marginBottom: 0 }}>{sheet.username}</h2>
+        <div className="muted small">{sheet.title}</div>
+        <div className="row small muted" style={{ marginTop: 6 }}>
           <span>XP</span>
           <span className="num">{sheet.levelXp} / {sheet.levelXpNeeded}</span>
         </div>
         <Bar value={sheet.levelXp} max={sheet.levelXpNeeded} color="var(--accent)" label="XP to next level" />
       </div>
-      <div className="badges" style={{ marginTop: 6 }}>
+      <div className="badges">
         {sheet.badges.map((b) => (
           <span key={b.id} className={`badge ${b.earned ? '' : 'locked'}`}
                 title={`${b.name}${b.earned ? '' : ' (locked)'}: ${b.description}`}>
-            {b.earned ? <BadgeIcon icon={b.icon} /> : <IconLock size={18} aria-hidden="true" />}
+            {b.earned ? <BadgeIcon icon={b.icon} size={17} /> : <IconLock size={14} aria-hidden="true" />}
             <span className="sr-only">{b.name}{b.earned ? '' : ', locked'}</span>
           </span>
         ))}
@@ -137,13 +138,13 @@ function ActiveQuests({ sheet }: { sheet: CharacterSheet }) {
         </Empty>
       ) : (
         sheet.quests.map((q) => (
-          <div key={q.id} style={{ marginBottom: 6 }}>
+          <div key={q.id} style={{ marginBottom: 4 }}>
             <div className="row">
               <span className="row-start"><span className="gold"><PlainIcon icon={q.icon} /></span> {q.name}</span>
               <span className="num gold">+{q.xpReward} XP</span>
             </div>
             <Bar value={q.savedAmount} max={q.targetAmount} color="var(--ok)" thin label={`${q.name} progress`} />
-            <div className="small muted num" style={{ marginTop: -6 }}>
+            <div className="small muted num" style={{ marginTop: -5 }}>
               <Money value={q.savedAmount} /> / <Money value={q.targetAmount} />
             </div>
           </div>
@@ -157,18 +158,17 @@ function StreakCard({ sheet }: { sheet: CharacterSheet }) {
   const { streak } = sheet
   const remaining = 7 - (streak.current % 7)
   return (
-    <Panel title="Streak">
-      <div className="flames" aria-label={`Logged on ${streak.last7.filter(Boolean).length} of the last 7 days`}>
+    <Panel title="Streak" action={<span className="small muted">best {streak.longest}</span>}>
+      <div className="flames" aria-label={`Active on ${streak.last7.filter(Boolean).length} of the last 7 days`}>
         {streak.last7.map((lit, i) => (
-          <IconFlame key={i} size={22} className={lit ? 'lit' : 'unlit'} aria-hidden="true" />
+          <IconFlame key={i} size={20} className={lit ? 'lit' : 'unlit'} aria-hidden="true" />
         ))}
       </div>
-      <div className="small muted" style={{ marginTop: 6 }}>
+      <div className="small muted" style={{ marginTop: 4 }}>
         {streak.current > 0
           ? `${streak.current} day${streak.current === 1 ? '' : 's'} · ${remaining === 7 ? 'week complete!' : `${remaining} to a full week`}`
-          : 'Log something today to light a flame.'}
+          : 'Do something today to light a flame.'}
       </div>
-      <div className="small muted">Longest: {streak.longest}</div>
     </Panel>
   )
 }
@@ -192,7 +192,7 @@ function LootRow({ entry }: { entry: Entry }) {
   const Arrow = entry.type === 'TRANSFER' ? IconArrowsLeftRight : out ? IconArrowUpRight : IconArrowDownLeft
   const label = entry.note || entry.category?.name || 'Transfer'
   return (
-    <div className="list-row" style={{ padding: '5px 2px' }}>
+    <div className="list-row" style={{ padding: '4px 2px' }}>
       <Arrow size={18} color={entry.type === 'TRANSFER' ? 'var(--mp)' : out ? 'var(--hp)' : 'var(--ok)'} aria-hidden="true" />
       <span className="grow title">
         {label}
