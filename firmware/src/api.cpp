@@ -102,8 +102,36 @@ Status fetchSummary(const char *token, Summary &out) {
     out.tightestLeft = budget["tightestLeft"] | 0.0;
   }
 
+  out.spentToday = doc["spentToday"] | 0.0;
+  for (JsonObject b : doc["budgets"].as<JsonArray>()) {
+    if (out.budgetCount >= 3) break;
+    BudgetRow &dst = out.budgets[out.budgetCount++];
+    copy(dst.name, sizeof(dst.name), b["name"]);
+    dst.spent = b["spent"] | 0.0;
+    dst.budget = b["budget"] | 0.0;
+    dst.left = b["left"] | 0.0;
+  }
+  for (JsonObject q : doc["quests"].as<JsonArray>()) {
+    if (out.questCount >= 3) break;
+    Quest &dst = out.quests[out.questCount++];
+    copy(dst.name, sizeof(dst.name), q["name"]);
+    dst.saved = q["saved"] | 0.0;
+    dst.target = q["target"] | 0.0;
+  }
+  for (JsonObject l : doc["loot"].as<JsonArray>()) {
+    if (out.lootCount >= 3) break;
+    Loot &dst = out.loot[out.lootCount++];
+    copy(dst.date, sizeof(dst.date), l["date"]);
+    copy(dst.type, sizeof(dst.type), l["type"]);
+    dst.amount = l["amount"] | 0.0;
+    copy(dst.label, sizeof(dst.label), l["label"]);
+  }
+  copy(out.line, sizeof(out.line), doc["line"]);
+  copy(out.mood, sizeof(out.mood), doc["mood"]);
+
   out.calories = doc["calories"] | 0;
   out.calorieGoal = doc["calorieGoal"] | 2000;
+  out.mealsToday = doc["mealsToday"] | 0;
 
   for (JsonObject w : doc["workouts"].as<JsonArray>()) {
     if (out.workoutCount >= 6) break;

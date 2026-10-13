@@ -115,8 +115,8 @@ public class StewardService {
             such as today's date.
 
             Whenever your reply is final for this turn, end it with one more line exactly like:
-            TRANSLATION: <the same information as one plain, modern sentence, in the same \
-            language mix the user used>
+            TRANSLATION: <the same information as one plain, modern sentence, always in \
+            English (it is shown on screen; only your spoken reply mixes languages)>
 
             Today is %s, %s.
             """.formatted(today.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH), today);

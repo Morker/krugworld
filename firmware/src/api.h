@@ -23,6 +23,23 @@ struct Event {
   char title[64];
 };
 
+struct BudgetRow {
+  char name[32];
+  double spent, budget, left;
+};
+
+struct Quest {
+  char name[40];
+  double saved, target;
+};
+
+struct Loot {
+  char date[11];
+  char type[10];  // "expense", "income", "transfer"
+  double amount;
+  char label[48];
+};
+
 /**
  * /api/device/summary, flattened into fixed-size fields: no heap churn on a
  * device that runs for months. Money is a double here because it's only
@@ -35,17 +52,25 @@ struct Summary {
   char title[32];
   int xp, levelXp, levelXpNeeded;
   int streak;
-  double gold, spentThisMonth;
+  double gold, spentToday, spentThisMonth;
   bool hasBudget;
   double budgetLeft, budgetTotal;
   int budgetDaysLeft;
   char tightest[48];
   double tightestLeft;
-  int calories, calorieGoal;
+  BudgetRow budgets[3];
+  int budgetCount;
+  int calories, calorieGoal, mealsToday;
   Workout workouts[6];
   int workoutCount;
   Event events[3];
   int eventCount;
+  Quest quests[3];
+  int questCount;
+  Loot loot[3];
+  int lootCount;
+  char line[200];  // what Gaby says on the home page
+  char mood[10];   // happy, nudge, worried, proud, sleepy
   bool voiceReady;
   int voiceRemaining;
 };

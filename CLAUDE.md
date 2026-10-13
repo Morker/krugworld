@@ -59,6 +59,9 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
   same family as before — burgundy cap + gold feather, gold spectacles, teal coat — with
   auburn braids. Docks in the right column on wide screens. Replies in the user's mix of
   **English and Malay** (rojak), light medieval flavour, short enough to be spoken aloud.
+- **Language rule:** only Gaby's *spoken/chat reply* is rojak. Everything shown as screen
+  text is English: device labels, her daily line (`GabyLine`), and the reply subtitle
+  (the `TRANSLATION:` line). The "You: ..." transcript shows the user's own words as said.
 - **AI provider: OpenAI for everything** (brain, speech-to-text, text-to-speech), one
   `OPENAI_API_KEY`. Claude remains available via `KRUGWORLD_STEWARD_PROVIDER=anthropic`
   (official `anthropic-java` SDK; default model `claude-opus-5-5`).

@@ -31,6 +31,7 @@ class DeviceIntegrationTest extends IntegrationTest {
     @Autowired FakeChatProvider model;
     @Autowired FakeSpeechProvider speech;
     @Autowired StewardProperties props;
+    @Autowired java.time.Clock clock;
 
     @BeforeEach
     void reset() {
@@ -139,6 +140,32 @@ class DeviceIntegrationTest extends IntegrationTest {
 
         mvc.perform(get("/api/device/summary").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.workouts[0].done").value(true));
+    }
+
+    @Test
+    void theSummaryCarriesTodaysSpendingLootQuestsAndGabysLine() throws Exception {
+        CurrentUser me = newUser();
+        String token = pair(me);
+        long purse = body(getAs(me, "/api/accounts")).get(0).get("id").asLong();
+        long food = 0;
+        for (var c : body(getAs(me, "/api/categories"))) {
+            if (c.get("name").asText().equals("Food")) food = c.get("id").asLong();
+        }
+        postAs(me, "/api/entries", Map.of("type", "EXPENSE", "amount", "12.50", "accountId", purse,
+                "categoryId", food, "note", "Nasi lemak", "occurredOn", java.time.LocalDate.now(clock).toString()))
+                .andExpect(status().isCreated());
+        postAs(me, "/api/quests", Map.of("name", "New laptop", "icon", "savings", "targetAmount", "3000.00"))
+                .andExpect(status().isCreated());
+
+        mvc.perform(get("/api/device/summary").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.spentToday").value(12.50))
+                .andExpect(jsonPath("$.loot[0].type").value("expense"))
+                .andExpect(jsonPath("$.loot[0].label").value("Nasi lemak"))
+                .andExpect(jsonPath("$.quests[0].name").value("New laptop"))
+                .andExpect(jsonPath("$.quests[0].target").value(3000.00))
+                .andExpect(jsonPath("$.mealsToday").value(0))
+                .andExpect(jsonPath("$.line").isNotEmpty())
+                .andExpect(jsonPath("$.mood").isNotEmpty());
     }
 
     @Test
