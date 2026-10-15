@@ -24,6 +24,10 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    /** Optional; only used to send a password-reset link. Unique ignoring case. */
+    @Column(length = 254)
+    private String email;
+
     @Column(nullable = false, length = 20)
     private String skin = "modern";
 
@@ -66,6 +70,14 @@ public class User {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getSkin() {

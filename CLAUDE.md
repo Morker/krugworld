@@ -18,7 +18,7 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 ## Stack and layout
 
 - `backend/` — Spring Boot 3.3 (Java 17), Spring Data JPA + JdbcTemplate for aggregates,
-  Spring Security, Flyway (`db/migration/V1..V8`), Testcontainers 1.21.4 (pinned: older
+  Spring Security, Flyway (`db/migration/V1..V9`), Testcontainers 1.21.4 (pinned: older
   versions fail against Docker 29).
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
@@ -47,6 +47,11 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
   Pages other than the Hall are `lazy()` chunks (`App.tsx`); `Layout` wraps them in `PageBoundary`.
   Optimistic updates (workout tick, entry delete) use `onMutate` + rollback in `api/*hooks.ts`.
   New SPA routes must also be added to `SpaController`.
+- Password reset by email (`auth/PasswordResetService`, V9): optional `app_user.email`; links carry a
+  random token of which only the SHA-256 is stored (single use, 30 min, 1 per minute per account);
+  asking never reveals whether an email exists; mail goes out on a background thread through
+  `ResetMailer` (SMTP via `SPRING_MAIL_*`, `FakeResetMailer` in tests). Off unless SMTP is configured
+  (see DEPLOY.md). `management.health.mail.enabled=false` so a dead SMTP server can't fail redeploys.
 - Tests: `IntegrationTest` base boots the app against Testcontainers Postgres with the
   scheduler off and the Steward on a scripted `FakeChatProvider` (no network, no cost).
 

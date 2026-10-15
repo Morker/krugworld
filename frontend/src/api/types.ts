@@ -9,6 +9,7 @@ export type WeatherPlace = { place: string; lat: number; lon: number }
 export type Me = {
   id: number
   username: string
+  email: string | null
   skin: Skin
   theme: Theme
   calorieGoal: number

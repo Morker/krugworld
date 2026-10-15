@@ -4,7 +4,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useMe } from './api/hooks'
 import { Layout } from './components/Layout'
 import { ErrorLine, Loading } from './components/ui'
-import { LoginPage, RegisterPage } from './pages/AuthPages'
+import { ForgotPage, LoginPage, RegisterPage, ResetPage } from './pages/AuthPages'
 import { HallPage } from './pages/HallPage'
 import { useAccountSkin } from './skin/skin'
 
@@ -41,6 +41,8 @@ export default function App() {
     return (
       <Routes>
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPage />} />
+        <Route path="/reset-password" element={<ResetPage />} />
         <Route path="*" element={<LoginPage />} />
       </Routes>
     )

@@ -46,6 +46,11 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
+    <!-- Sends the password-reset email (SMTP, configured by SPRING_MAIL_* env vars). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
 
     <!-- Flyway owns the schema: every table change is a numbered SQL file in
          src/main/resources/db/migration, applied once, in order, and recorded.

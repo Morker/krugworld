@@ -67,9 +67,24 @@ export function useLogin() {
 export function useRegister() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { username: string; password: string }) =>
+    mutationFn: (body: { username: string; password: string; email?: string }) =>
       api<Me>('/api/auth/register', { method: 'POST', json: body }),
     onSuccess: (me) => switchUser(qc, me),
+  })
+}
+
+// Forgotten passphrase: ask for a link by email, then use it. Neither call needs
+// a login, and asking always "works", so it can't be used to find who has an account.
+export function useRequestReset() {
+  return useMutation({
+    mutationFn: (email: string) => api('/api/auth/password-reset/request', { method: 'POST', json: { email } }),
+  })
+}
+
+export function useConfirmReset() {
+  return useMutation({
+    mutationFn: (body: { token: string; password: string }) =>
+      api('/api/auth/password-reset/confirm', { method: 'POST', json: body }),
   })
 }
 
@@ -89,6 +104,7 @@ export function useSavePreferences() {
       theme?: Theme
       calorieGoal?: number
       tempUnit?: 'C' | 'F'
+      email?: string // blank clears it
       weather?: { place: string; lat?: number; lon?: number }
     }) =>
       api<Me>('/api/auth/me/preferences', { method: 'PATCH', json: prefs }),
