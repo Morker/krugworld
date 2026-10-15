@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { IconCheck, IconMinus, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react'
+import { IconCheck, IconFlag, IconMinus, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react'
 import { money } from '../api/client'
 import { useContribute, useDeleteQuest, useQuests, useSaveQuest } from '../api/hooks'
 import type { Quest } from '../api/types'
@@ -33,7 +33,7 @@ export function QuestsPage() {
 
       {quests.data && active.length === 0 && (
         <Panel>
-          <Empty>
+          <Empty icon={<IconFlag size={26} />}>
             No active quests. A new laptop, a trip, an emergency fund: name it and start saving.
             <div><button onClick={() => setEditing('new')}>Start a quest</button></div>
           </Empty>

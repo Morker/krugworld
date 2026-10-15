@@ -125,12 +125,32 @@ export function useDeleteWorkout() {
   })
 }
 
+type Snapshot = [readonly unknown[], unknown][]
+
+// Ticking a workout is the app's most repeated tap, so it answers at once:
+// the box flips on screen, the request follows, and if the server says no the
+// box flips back. Whatever happens, the real numbers (XP, streak) are
+// refetched afterwards.
 export function useSetWorkoutDone() {
+  const qc = useQueryClient()
   const refresh = useRefresh('workouts')
   return useMutation({
     mutationFn: ({ id, date, done }: { id: number; date: string; done: boolean }) =>
       api<Workout>(`/api/workouts/${id}/done`, { method: 'POST', json: { date, done } }),
-    onSuccess: refresh,
+    onMutate: async ({ id, done }) => {
+      await Promise.all([qc.cancelQueries({ queryKey: ['workouts'] }), qc.cancelQueries({ queryKey: ['life'] })])
+      const before: Snapshot = [
+        ...qc.getQueriesData({ queryKey: ['workouts'] }),
+        ...qc.getQueriesData({ queryKey: ['life'] }),
+      ]
+      qc.setQueriesData<Workout[]>({ queryKey: ['workouts'] }, (old) =>
+        old?.map((w) => (w.id === id ? { ...w, done } : w)))
+      qc.setQueriesData<LifeToday>({ queryKey: ['life'] }, (old) =>
+        old && { ...old, workouts: old.workouts.map((w) => (w.id === id ? { ...w, done } : w)) })
+      return { before }
+    },
+    onError: (_error, _vars, ctx) => ctx?.before.forEach(([key, data]) => qc.setQueryData(key, data)),
+    onSettled: refresh,
   })
 }
 

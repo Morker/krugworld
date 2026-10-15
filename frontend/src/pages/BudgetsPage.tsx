@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { IconArchive, IconPencil, IconPlus, IconRestore } from '@tabler/icons-react'
+import { IconArchive, IconFlask, IconPencil, IconPlus, IconRestore } from '@tabler/icons-react'
 import { money } from '../api/client'
 import { useArchiveCategory, useBudgets, useCategories, useSaveCategory } from '../api/hooks'
 import type { Category, CategoryKind } from '../api/types'
@@ -44,7 +44,7 @@ export function BudgetsPage() {
 
       <Panel title="Mana by category">
         {b && b.categories.length === 0 && (
-          <Empty>No budgets yet. Give a category a monthly limit below and watch its mana drain as you spend.</Empty>
+          <Empty icon={<IconFlask size={26} />}>No budgets yet. Give a category a monthly limit below and watch its mana drain as you spend.</Empty>
         )}
         {b?.categories.map((row) => {
           const over = row.left < 0

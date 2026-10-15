@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clay Fox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#3b2a22; --ink-soft:#7a6358; --card:#fff8f0e6; --line:#e7d6c6; --accent:#d9692b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#e9ddd0;font-family:Fredoka,"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  canvas:active{cursor:grabbing}
+
+  .title{position:fixed;top:18px;left:22px;pointer-events:none}
+  .title h1{margin:0;font-size:28px;font-weight:600;letter-spacing:.01em}
+  .title p{margin:2px 0 0;color:var(--ink-soft);font-size:14px}
+
+  .dock{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;
+    background:var(--card);border:2px solid var(--line);border-radius:22px;padding:8px 10px;box-shadow:0 10px 30px #5a3b2a22, inset 0 -3px 0 #e9d8c8;
+    backdrop-filter:blur(6px);max-width:calc(100vw - 32px)}
+  .dock .sep{width:2px;height:26px;background:var(--line);border-radius:2px}
+  button{font:inherit;font-size:14px;color:var(--ink);background:#fff;border:2px solid var(--line);border-radius:14px;padding:6px 12px;cursor:pointer;
+    box-shadow:inset 0 -3px 0 #eadbcc;transition:transform .08s}
+  button:hover{transform:translateY(-1px)}
+  button:active{transform:translateY(1px);box-shadow:inset 0 -1px 0 #eadbcc}
+  button.on{background:var(--accent);border-color:#b8521b;color:#fff;box-shadow:inset 0 -3px 0 #a9481a}
+  .sw{width:30px;height:30px;padding:0;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--line), inset 0 -4px 6px #0003}
+  .sw.on{box-shadow:0 0 0 3px var(--accent), inset 0 -4px 6px #0003}
+  .lbl{font-size:12px;color:var(--ink-soft);margin-left:2px}
+
+  .hint{position:fixed;top:22px;right:22px;color:var(--ink-soft);font-size:13px;text-align:right;line-height:1.6;pointer-events:none}
+  .fps{position:fixed;right:22px;bottom:24px;color:var(--ink-soft);font-size:12px;pointer-events:none}
+  .err{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;font-size:18px}
+  @media (max-width:640px){ .hint{display:none} .title h1{font-size:22px} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="title">
+  <h1>Clay Fox</h1>
+  <p>hand-squished, ray-marched</p>
+</div>
+<div class="hint">drag to orbit · scroll / pinch to zoom<br>right-drag to pan · double-click to reset</div>
+
+<div class="dock">
+  <button id="spin">Turntable</button>
+  <button id="anim" class="on">Alive</button>
+  <span class="sep"></span>
+  <span class="lbl">Clay</span>
+  <button class="sw on" data-preset="red"    title="Red fox"     style="background:#d9692b"></button>
+  <button class="sw"    data-preset="arctic" title="Arctic fox"  style="background:#eef0f2"></button>
+  <button class="sw"    data-preset="silver" title="Silver fox"  style="background:#5d5f66"></button>
+  <button class="sw"    data-preset="fennec" title="Fennec fox"  style="background:#e2bf8a"></button>
+  <button class="sw"    data-preset="candy"  title="Candy clay"  style="background:#ef8fb4"></button>
+  <span class="sep"></span>
+  <button id="snap">Save PNG</button>
+</div>
+<div class="fps" id="fps"></div>
+
+<script id="vs" type="x-shader/x-vertex">#version 300 es
+in vec2 pos;
+void main(){ gl_Position = vec4(pos, 0.0, 1.0); }
+</script>
+
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+uniform vec2  uRes;
+uniform float uTime;
+uniform vec3  uRo;
+uniform mat3  uCam;
+uniform vec3  uFur, uCream, uDark, uFloor, uBgTop, uBgBot;
+out vec4 fragColor;
+
+/* ---------- helpers ---------- */
+mat2 rot(float a){ float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
+
+float smin(float a, float b, float k){
+  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+  return mix(b, a, h) - k * h * (1.0 - h);
+}
+float smax(float a, float b, float k){ return -smin(-a, -b, k); }
+
+// smooth union that also blends colour, so parts melt together like clay
+vec4 sminc(vec4 a, vec4 b, float k){
+  float h = clamp(0.5 + 0.5 * (b.x - a.x) / k, 0.0, 1.0);
+  return vec4(mix(b.x, a.x, h) - k * h * (1.0 - h), mix(b.yzw, a.yzw, h));
+}
+
+float sdEll(vec3 p, vec3 r){
+  float k0 = length(p / r), k1 = length(p / (r * r));
+  return k0 * (k0 - 1.0) / k1;
+}
+
+// round cone between a (radius r1) and b (radius r2) — Inigo Quilez
+float sdRC(vec3 p, vec3 a, vec3 b, float r1, float r2){
+  vec3 ba = b - a; float l2 = dot(ba, ba); float rr = r1 - r2;
+  float a2 = l2 - rr * rr; float il2 = 1.0 / l2;
+  vec3 pa = p - a; float y = dot(pa, ba); float z = y - l2;
+  vec3 xv = pa * l2 - ba * y; float x2 = dot(xv, xv);
+  float y2 = y * y * l2; float z2 = z * z * l2;
+  float k = sign(rr) * rr * rr * x2;
+  if (sign(z) * a2 * z2 > k) return sqrt(x2 + z2) * il2 - r2;
+  if (sign(y) * a2 * y2 < k) return sqrt(x2 + y2) * il2 - r1;
+  return (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
+}
+
+float hash(vec3 p){
+  p = fract(p * 0.3183099 + 0.1); p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+float noise(vec3 x){
+  vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash(i),               hash(i + vec3(1,0,0)), f.x),
+                 mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                 mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+}
+
+/* ---------- the fox ---------- */
+const vec3 EYE = vec3(0.004, 0.003, 0.003);   // near-black = glossy material
+
+vec3 tailPt(float s, float t){
+  float sway = sin(t * 1.7 - s * 2.6) * 0.24 * s * s;
+  return vec3(sway, 0.6 + 0.48 * s - 0.27 * s * s, -0.42 - 0.62 * s);
+}
+float tailR(float s){
+  return mix(0.075, 0.2, smoothstep(0.0, 0.5, s)) * (1.0 - 0.78 * smoothstep(0.72, 1.0, s));
+}
+
+vec4 map(vec3 p){
+  // cheap early-out far from the fox; the margin (0.5) is larger than the AO probe
+  // distance so the floor's ambient occlusion never sees the switch
+  float bound = length(p - vec3(0.0, 0.7, -0.05)) - 1.35;
+  if (bound > 0.5) return vec4(bound, uFur);
+
+  float t = uTime;
+  float breath = sin(t * 2.0) * 0.01;
+  vec3 ps = vec3(abs(p.x), p.yz);   // mirror for paired parts
+
+  // body + chest + neck
+  vec4 d = vec4(sdEll(p - vec3(0.0, 0.62, -0.02), vec3(0.29, 0.29 + breath, 0.47)), uFur);
+  d = sminc(d, vec4(sdEll(p - vec3(0.0, 0.58, 0.32), vec3(0.19, 0.23 + breath, 0.19)), uCream), 0.07);
+  vec3 hp = vec3(0.0, 1.0 + breath, 0.55);
+  d = sminc(d, vec4(sdRC(p, vec3(0.0, 0.68, 0.25), hp - vec3(0.0, 0.07, 0.05), 0.19, 0.15), uFur), 0.1);
+  d = sminc(d, vec4(sdEll(p - vec3(0.0, 0.8, 0.47), vec3(0.13, 0.18, 0.1)), uCream), 0.08);
+
+  // front legs
+  vec4 fl = vec4(sdRC(ps, vec3(0.14, 0.56, 0.27), vec3(0.14, 0.09, 0.33), 0.088, 0.055),
+                 mix(uDark, uFur, smoothstep(0.2, 0.34, p.y)));
+  fl = sminc(fl, vec4(sdEll(ps - vec3(0.14, 0.045, 0.37), vec3(0.07, 0.045, 0.09)), uDark), 0.04);
+  d = sminc(d, fl, 0.09);
+
+  // back legs: thigh, bent hock, paw
+  vec4 bl = vec4(sdEll(ps - vec3(0.16, 0.54, -0.27), vec3(0.12, 0.21, 0.18)), uFur);
+  vec3 legCol = mix(uDark, uFur, smoothstep(0.2, 0.34, p.y));
+  bl = sminc(bl, vec4(sdRC(ps, vec3(0.15, 0.46, -0.32), vec3(0.15, 0.24, -0.4), 0.08, 0.055), legCol), 0.05);
+  bl = sminc(bl, vec4(sdRC(ps, vec3(0.15, 0.24, -0.4), vec3(0.15, 0.08, -0.33), 0.055, 0.05), legCol), 0.04);
+  bl = sminc(bl, vec4(sdEll(ps - vec3(0.15, 0.045, -0.28), vec3(0.068, 0.045, 0.09)), uDark), 0.04);
+  d = sminc(d, bl, 0.08);
+
+  // tail (only evaluated near it)
+  float tb = length(p - vec3(0.0, 0.78, -0.8)) - 0.68;
+  if (tb < d.x + 0.12) {
+    vec4 tl = vec4(1e5, uFur);
+    vec3 prev = tailPt(0.0, t); float pr = tailR(0.0);
+    for (int i = 1; i <= 7; i++) {
+      float s = float(i) / 7.0;
+      vec3 c = tailPt(s, t); float r = tailR(s);
+      vec3 col = mix(uFur, uCream, smoothstep(0.66, 0.84, s));
+      tl = sminc(tl, vec4(sdRC(p, prev, c, pr, r), col), 0.06);
+      prev = c; pr = r;
+    }
+    d = sminc(d, tl, 0.08);
+  }
+
+  // head (local space, so it can look around)
+  vec3 q = p - hp;
+  q.xz = rot(sin(t * 0.5) * 0.38) * q.xz;
+  q.yz = rot(sin(t * 0.7) * 0.08 - 0.04) * q.yz;
+  q.xy = rot(sin(t * 0.9) * 0.07) * q.xy;
+  vec3 qs = vec3(abs(q.x), q.yz);
+
+  float hb = length(q - vec3(0.0, 0.08, 0.08)) - 0.5;
+  if (hb < d.x + 0.1) {
+    vec4 h = vec4(sdEll(q, vec3(0.23, 0.2, 0.21)), uFur);
+    h = sminc(h, vec4(sdEll(qs - vec3(0.165, -0.075, 0.01), vec3(0.12, 0.09, 0.11)), uCream), 0.07);
+    h = sminc(h, vec4(sdRC(q, vec3(0.0, -0.04, 0.1), vec3(0.0, -0.075, 0.36), 0.12, 0.04), uFur), 0.06);
+    h = sminc(h, vec4(sdEll(q - vec3(0.0, -0.11, 0.18), vec3(0.1, 0.055, 0.16)), uCream), 0.05);
+
+    // ears: flattened cones with a scooped-out cup
+    vec3 e = qs - vec3(0.11, 0.12, -0.04);
+    float twitch = pow(max(0.0, sin(t * 1.3)), 30.0) * 0.35;
+    if (q.x > 0.0) e.yz = rot(twitch) * e.yz;
+    float ear = sdRC(vec3(e.x, e.y, e.z * 2.4), vec3(0.0), vec3(0.075, 0.25, 0.0), 0.085, 0.012) / 2.4;
+    float cup = sdRC(vec3(e.x, e.y, (e.z - 0.036) * 2.4), vec3(0.008, 0.04, 0.0), vec3(0.062, 0.2, 0.0), 0.055, 0.008) / 2.4;
+    ear = smax(ear, -cup, 0.015);
+    vec3 earCol = mix(uFur, uDark, smoothstep(0.15, 0.21, e.y));
+    earCol = mix(earCol, uCream, smoothstep(0.0, 0.02, e.z) * (1.0 - smoothstep(0.15, 0.19, e.y)));
+    h = sminc(h, vec4(ear, earCol), 0.04);
+
+    // eyes (blinking) and nose
+    float blink = max(0.12, 1.0 - pow(max(0.0, sin(t * 0.8 + 1.0)), 300.0));
+    h = sminc(h, vec4(sdEll(qs - vec3(0.095, 0.035, 0.168), vec3(0.036, 0.04 * blink, 0.03)), EYE), 0.012);
+    h = sminc(h, vec4(sdEll(q - vec3(0.0, -0.068, 0.392), vec3(0.042, 0.032, 0.034)), EYE), 0.015);
+
+    d = sminc(d, h, 0.06);
+  }
+  return d;
+}
+
+/* ---------- rendering ---------- */
+vec3 calcNormal(vec3 p){
+  const vec2 k = vec2(1.0, -1.0); const float e = 0.0006;
+  return normalize(k.xyy * map(p + k.xyy * e).x + k.yyx * map(p + k.yyx * e).x +
+                   k.yxy * map(p + k.yxy * e).x + k.xxx * map(p + k.xxx * e).x);
+}
+
+float softShadow(vec3 ro, vec3 rd){
+  float res = 1.0, t = 0.02;
+  for (int i = 0; i < 48; i++) {
+    float h = map(ro + rd * t).x;
+    res = min(res, 7.0 * h / t);
+    t += clamp(h, 0.015, 0.25);
+    if (res < 0.002 || t > 4.0) break;
+  }
+  res = clamp(res, 0.0, 1.0);
+  return res * res * (3.0 - 2.0 * res);
+}
+
+float calcAO(vec3 p, vec3 n){
+  float occ = 0.0, sca = 1.0;
+  for (int i = 0; i < 6; i++) {
+    float h = 0.01 + 0.06 * float(i);
+    occ += (h - map(p + n * h).x) * sca;
+    sca *= 0.82;
+  }
+  return clamp(1.0 - 2.2 * occ, 0.0, 1.0);
+}
+
+// thumb-smudged clay surface: low-frequency dents + fine grain
+float clayBump(vec3 p){
+  return noise(p * 9.0) * 0.7 + noise(p * 26.0) * 0.3;
+}
+
+vec3 background(vec3 rd){
+  return mix(uBgBot, uBgTop, smoothstep(-0.2, 0.6, rd.y));
+}
+
+const vec3 L1 = normalize(vec3(0.55, 0.85, 0.45));   // key
+const vec3 L2 = normalize(vec3(-0.7, 0.35, -0.5));   // cool back rim
+
+vec3 light(vec3 p, vec3 n, vec3 rd, vec3 alb, float gloss, float ao){
+  float sh   = softShadow(p + n * 0.004, L1);
+  float wrap = clamp((dot(n, L1) + 0.35) / 1.35, 0.0, 1.0);    // soft clay wrap-around
+  float back = clamp(dot(n, L2), 0.0, 1.0);
+  float fre  = pow(1.0 - clamp(dot(n, -rd), 0.0, 1.0), 3.0);
+  vec3  sky  = mix(vec3(0.42, 0.34, 0.3), vec3(0.78, 0.82, 0.9), n.y * 0.5 + 0.5);
+  vec3  hh   = normalize(L1 - rd);
+  float spec = pow(clamp(dot(n, hh), 0.0, 1.0), mix(14.0, 140.0, gloss)) * mix(0.07, 2.2, gloss);
+
+  vec3 col = alb * vec3(1.0, 0.92, 0.8) * 2.4 * wrap * mix(0.25, 1.0, sh);
+  col += alb * sky * 0.55 * ao;
+  col += alb * vec3(0.55, 0.65, 0.85) * 0.35 * back * ao;
+  // fake subsurface: warm glow where light wraps into the shadow side
+  col += alb * alb * vec3(1.0, 0.45, 0.25) * 0.9 * pow(1.0 - wrap, 2.0) * ao * (1.0 - gloss);
+  col += vec3(1.0, 0.95, 0.88) * spec * sh;
+  col += fre * ao * mix(sky * alb * 0.6, background(reflect(rd, n)) * 0.6, gloss);
+  col += gloss * background(reflect(rd, n)) * 0.12;
+  return col;
+}
+
+void main(){
+  vec2 uv = (gl_FragCoord.xy * 2.0 - uRes) / uRes.y;
+  vec3 ro = uRo;
+  vec3 rd = normalize(uCam * vec3(uv, 2.1));
+
+  float tPlane = rd.y < 0.0 ? -ro.y / rd.y : 1e5;
+  float tmax = min(tPlane, 30.0);
+
+  // march the fox
+  float t = 0.0; vec4 h = vec4(1.0); bool hit = false;
+  for (int i = 0; i < 160; i++) {
+    h = map(ro + rd * t);
+    if (h.x < 0.0004 * t) { hit = true; break; }
+    t += h.x;
+    if (t > tmax) break;
+  }
+
+  vec3 col = background(rd);
+
+  if (hit) {
+    vec3 p = ro + rd * t;
+    vec3 n = calcNormal(p);
+    vec3 alb = h.yzw;
+    float lum = dot(alb, vec3(0.333));
+    float gloss = 1.0 - smoothstep(0.004, 0.012, lum);
+
+    // clay grain on the normal (less on the glossy eyes/nose)
+    const float e = 0.006;
+    float b0 = clayBump(p);
+    vec3 g = vec3(clayBump(p + vec3(e,0,0)), clayBump(p + vec3(0,e,0)), clayBump(p + vec3(0,0,e))) - b0;
+    g /= e; g -= n * dot(g, n);
+    n = normalize(n - g * 0.008 * (1.0 - gloss));
+    alb *= 0.93 + 0.12 * noise(p * 5.0);
+
+    float ao = calcAO(p, n);
+    col = light(p, n, rd, alb, gloss, ao);
+  } else if (tPlane < 1e4) {
+    vec3 p = ro + rd * tPlane;
+    vec3 n = vec3(0.0, 1.0, 0.0);
+    float ao = calcAO(p, n);
+    float sh = softShadow(p + n * 0.002, L1);
+    vec3 fl = uFloor * (0.95 + 0.06 * noise(p * 3.0));
+    vec3 c = fl * (vec3(1.0, 0.93, 0.83) * 1.25 * mix(0.45, 1.0, sh) + vec3(0.55, 0.6, 0.7) * 0.45) * mix(0.35, 1.0, ao);
+    float fade = smoothstep(2.0, 9.0, length(p.xz));
+    col = mix(c, background(rd), fade);
+  }
+
+  // filmic tone map, gamma, soft vignette
+  col = (col * (2.51 * col + 0.03)) / (col * (2.43 * col + 0.59) + 0.14);
+  col = pow(clamp(col, 0.0, 1.0), vec3(1.0 / 2.2));
+  vec2 q = gl_FragCoord.xy / uRes;
+  col *= 0.75 + 0.25 * pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.15);
+  col += (hash(vec3(gl_FragCoord.xy, uTime)) - 0.5) / 255.0;   // dither
+  fragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true });
+  if (!gl) {
+    document.body.insertAdjacentHTML('beforeend', '<div class="err">This browser has no WebGL2, so the clay fox cannot be sculpted here.</div>');
+    return;
+  }
+
+  /* ---------- shader setup ---------- */
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src.trim());
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, document.getElementById('vs').textContent));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, document.getElementById('fs').textContent));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'pos');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const U = {};
+  for (const n of ['uRes', 'uTime', 'uRo', 'uCam', 'uFur', 'uCream', 'uDark', 'uFloor', 'uBgTop', 'uBgBot']) U[n] = gl.getUniformLocation(prog, n);
+
+  /* ---------- clay presets ---------- */
+  const lin = hex => [1, 3, 5].map(i => Math.pow(parseInt(hex.slice(i, i + 2), 16) / 255, 2.2));
+  const PRESETS = {
+    red:    { fur: '#d9692b', cream: '#f4e9dc', dark: '#3a2620', floor: '#e6d6c4', top: '#f3e7da', bot: '#d9c6b3' },
+    arctic: { fur: '#eef0f2', cream: '#ffffff', dark: '#8a8f99', floor: '#d8e1ea', top: '#eef3f8', bot: '#c6d3e0' },
+    silver: { fur: '#5d5f66', cream: '#e9e6e2', dark: '#26262b', floor: '#d6d2cf', top: '#ecebea', bot: '#bfbab6' },
+    fennec: { fur: '#e2bf8a', cream: '#fbf1e1', dark: '#9b6b45', floor: '#efdcbc', top: '#f8ecd6', bot: '#e0c79f' },
+    candy:  { fur: '#ef8fb4', cream: '#fff3e6', dark: '#7a4cc2', floor: '#f6dbe6', top: '#fdeef3', bot: '#e8c2d6' },
+  };
+  let colors = {};
+  function setPreset(name) {
+    const p = PRESETS[name];
+    colors = { uFur: lin(p.fur), uCream: lin(p.cream), uDark: lin(p.dark), uFloor: lin(p.floor), uBgTop: lin(p.top), uBgBot: lin(p.bot) };
+    document.body.style.background = p.top;
+    document.querySelectorAll('[data-preset]').forEach(b => b.classList.toggle('on', b.dataset.preset === name));
+  }
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => setPreset(b.dataset.preset)));
+  setPreset('red');
+
+  /* ---------- orbit camera (smoothed) ---------- */
+  const HOME = { theta: 0.75, phi: 0.22, dist: 3.4, tx: 0, ty: 0.62, tz: 0 };
+  const goal = { ...HOME };
+  const cam = { ...HOME };
+  let spinning = false, alive = true;
+
+  const pointers = new Map();
+  let lastPinch = 0;
+  canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, btn: e.button, shift: e.shiftKey }); });
+  canvas.addEventListener('pointerup', e => { pointers.delete(e.pointerId); lastPinch = 0; });
+  canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); lastPinch = 0; });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('pointermove', e => {
+    const p = pointers.get(e.pointerId);
+    if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (lastPinch) goal.dist = clamp(goal.dist * lastPinch / d, 1.3, 9);
+      lastPinch = d;
+      return;
+    }
+    if (p.btn === 2 || p.shift) {
+      // pan in the camera plane
+      const s = goal.dist * 0.0012;
+      const rx = Math.cos(goal.theta), rz = -Math.sin(goal.theta);
+      goal.tx -= dx * s * rx;
+      goal.tz -= dx * s * rz;
+      goal.ty = clamp(goal.ty + dy * s, 0.1, 2);
+    } else {
+      goal.theta -= dx * 0.008;
+      goal.phi = clamp(goal.phi + dy * 0.006, -0.05, 1.45);
+    }
+  });
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    goal.dist = clamp(goal.dist * Math.exp(e.deltaY * 0.001), 1.3, 9);
+  }, { passive: false });
+  canvas.addEventListener('dblclick', () => Object.assign(goal, HOME, { theta: goal.theta + wrapAngle(HOME.theta - goal.theta) }));
+
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function wrapAngle(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
+
+  const spinBtn = document.getElementById('spin'), animBtn = document.getElementById('anim');
+  spinBtn.addEventListener('click', () => { spinning = !spinning; spinBtn.classList.toggle('on', spinning); });
+  animBtn.addEventListener('click', () => { alive = !alive; animBtn.classList.toggle('on', alive); });
+  document.getElementById('snap').addEventListener('click', () => {
+    draw(); // fresh frame in the buffer
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'clay-fox.png';
+    a.click();
+  });
+
+  /* ---------- adaptive resolution: keep it smooth on slower GPUs ---------- */
+  const fpsEl = document.getElementById('fps');
+  let scale = Math.min(window.devicePixelRatio || 1, 1.5);
+  const maxScale = Math.min(window.devicePixelRatio || 1, 2);
+  let frameMs = 16, sinceAdjust = 0;
+  function resize() {
+    const w = Math.max(1, Math.floor(innerWidth * scale)), h = Math.max(1, Math.floor(innerHeight * scale));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  }
+  addEventListener('resize', resize);
+
+  /* ---------- frame loop ---------- */
+  let animTime = 0, last = performance.now();
+  function draw() {
+    resize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+
+    const cp = Math.cos(cam.phi);
+    const ro = [cam.tx + cam.dist * Math.sin(cam.theta) * cp, cam.ty + cam.dist * Math.sin(cam.phi), cam.tz + cam.dist * Math.cos(cam.theta) * cp];
+    let f = [cam.tx - ro[0], cam.ty - ro[1], cam.tz - ro[2]];
+    const fl = Math.hypot(...f); f = f.map(v => v / fl);
+    let r = [-f[2], 0, f[0]];                          // cross(forward, worldUp)
+    const rl = Math.hypot(...r); r = r.map(v => v / rl);
+    const u = [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]];
+
+    gl.uniform2f(U.uRes, canvas.width, canvas.height);
+    gl.uniform1f(U.uTime, animTime);
+    gl.uniform3fv(U.uRo, ro);
+    gl.uniformMatrix3fv(U.uCam, false, [...r, ...u, ...f]);
+    for (const [k, v] of Object.entries(colors)) gl.uniform3fv(U[k], v);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  function frame(now) {
+    const dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
+    if (alive) animTime += dt;
+    if (spinning) goal.theta += dt * 0.45;
+
+    const k = 1 - Math.pow(0.0008, dt);   // frame-rate independent easing
+    for (const key of Object.keys(cam)) cam[key] += (goal[key] - cam[key]) * k;
+
+    draw();
+
+    frameMs = frameMs * 0.92 + (dt * 1000) * 0.08;
+    sinceAdjust += dt;
+    if (sinceAdjust > 1.2) {
+      sinceAdjust = 0;
+      if (frameMs > 24 && scale > 0.45) scale = Math.max(0.45, scale * 0.85);
+      else if (frameMs < 15 && scale < maxScale) scale = Math.min(maxScale, scale * 1.1);
+    }
+    fpsEl.textContent = `${Math.round(1000 / frameMs)} fps · ${Math.round(scale * 100)}% res`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

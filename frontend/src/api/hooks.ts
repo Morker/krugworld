@@ -136,10 +136,19 @@ export function useSaveEntry() {
 }
 
 export function useDeleteEntry() {
+  const qc = useQueryClient()
   const invalidate = useInvalidateMoney()
   return useMutation({
     mutationFn: (id: number) => api(`/api/entries/${id}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    // The row leaves the list at once; it comes back if the server refuses.
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ['entries'] })
+      const before = qc.getQueriesData<Entry[]>({ queryKey: ['entries'] })
+      qc.setQueriesData<Entry[]>({ queryKey: ['entries'] }, (old) => old?.filter((e) => e.id !== id))
+      return { before }
+    },
+    onError: (_error, _id, ctx) => ctx?.before.forEach(([key, data]) => qc.setQueryData(key, data)),
+    onSettled: invalidate,
   })
 }
 

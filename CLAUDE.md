@@ -42,6 +42,11 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 - Never annotate a `String` column with `@Lob` (breaks Postgres reads outside a transaction).
 - Frontend: skins are CSS variables on `<html data-skin data-theme>` (`styles/skins.css`);
   components only use the variables. Keep `npm run lint` at zero warnings.
+- Frontend is an installable PWA (`vite-plugin-pwa`, icons in `frontend/public/icons`, drawn
+  from Gaby's portrait). The service worker caches the app shell only: **never cache `/api`**.
+  Pages other than the Hall are `lazy()` chunks (`App.tsx`); `Layout` wraps them in `PageBoundary`.
+  Optimistic updates (workout tick, entry delete) use `onMutate` + rollback in `api/*hooks.ts`.
+  New SPA routes must also be added to `SpaController`.
 - Tests: `IntegrationTest` base boots the app against Testcontainers Postgres with the
   scheduler off and the Steward on a scripted `FakeChatProvider` (no network, no cost).
 

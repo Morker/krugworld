@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { IconPencil, IconPlayerPause, IconPlayerPlay, IconPlus, IconTrash } from '@tabler/icons-react'
+import { IconPencil, IconPlayerPause, IconPlayerPlay, IconPlus, IconRepeat, IconTrash } from '@tabler/icons-react'
 import { money } from '../api/client'
 import { useAccounts, useCategories, useDeleteRule, useRules, useSaveRule } from '../api/hooks'
 import type { Rule } from '../api/types'
@@ -45,7 +45,7 @@ export function RecurringPage() {
         {rules.isLoading && <Loading />}
         <ErrorLine error={rules.error ?? save.error ?? remove.error} />
         {rules.data && list.length === 0 && (
-          <Empty>
+          <Empty icon={<IconRepeat size={26} />}>
             Nothing recurring yet. Add your salary, rent or subscriptions once, and they log themselves.
             <div><button onClick={() => setEditing('new')}>Add recurring</button></div>
           </Empty>

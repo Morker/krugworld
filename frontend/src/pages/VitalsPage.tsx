@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { IconChevronLeft, IconChevronRight, IconFlame, IconPencil, IconPlus, IconSquare, IconSquareCheck, IconTrash } from '@tabler/icons-react'
+import { IconChevronLeft, IconChevronRight, IconFlame, IconPencil, IconPlus, IconSquare, IconSoup, IconSquareCheck, IconSwords, IconTrash } from '@tabler/icons-react'
 import { useMe, useSavePreferences } from '../api/hooks'
 import { useAddMeal, useDeleteMeal, useDeleteWorkout, useMeals, useSaveWorkout, useSetWorkoutDone, useWorkouts } from '../api/lifeHooks'
 import type { Weekday, Workout } from '../api/types'
@@ -98,7 +98,7 @@ function Feast({ date, onLogged }: { date: string; onLogged: () => void }) {
           <ErrorLine error={add.error ?? remove.error} />
 
           {d.meals.length === 0 ? (
-            <Empty>No feasting recorded for this day.</Empty>
+            <Empty icon={<IconSoup size={26} />}>No feasting recorded for this day. The larder is quiet.</Empty>
           ) : (
             <div className="list" style={{ marginTop: 8 }}>
               {d.meals.map((m) => (
@@ -162,7 +162,7 @@ function Training({ date, onDone }: { date: string; onDone: (xp: boolean) => voi
       {list.isLoading && <Loading />}
       <ErrorLine error={list.error ?? tick.error ?? remove.error} />
       {list.data && workouts.length === 0 && (
-        <Empty>
+        <Empty icon={<IconSwords size={26} />}>
           No training set. The dungeon awaits thy strength.
           <div><button onClick={() => setEditing('new')}>Add a workout</button></div>
         </Empty>

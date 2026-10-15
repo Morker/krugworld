@@ -4,6 +4,7 @@ import { IconLogout } from '@tabler/icons-react'
 import { useLogout } from '../api/hooks'
 import { StewardDock } from '../steward/StewardDock'
 import { groupFor, NAV } from './nav'
+import { PageBoundary } from './PageBoundary'
 
 const DOCK_KEY = 'krugworld.dock-open'
 
@@ -76,7 +77,7 @@ export function Layout() {
             ))}
           </nav>
         )}
-        <Outlet />
+        <PageBoundary><Outlet /></PageBoundary>
       </main>
 
       {/* The full Steward page already is the chat, so no dock there. */}
