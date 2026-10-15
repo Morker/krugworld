@@ -75,9 +75,13 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
   (2026-10-12): rojak transcribed well with auto language detection, tools ran, ~4.7 s to the
   text reply, first audio byte ~1.1 s later. Owner's OpenAI key lives outside the repo in
   `C:\Users\Krugger\Desktop\key\krugworld api key\` — read it into `OPENAI_API_KEY`, never print it.
-- **Not deployed yet.** Planned: `krugworld.veteryr.online`, `/opt/krugworld`, app on
-  `127.0.0.1:8096` on the same shared server as the old Tavern (see `DEPLOY.md`; never
-  touch the other projects' containers on that box). DNS record + certbot still needed.
+- **Live since 2026-10-15 at https://krugworld.veteryr.online** (Let's Encrypt, auto-renew).
+  `/opt/krugworld` on the shared Lighthouse box `ubuntu@43.156.150.155`, app on
+  `127.0.0.1:8096` behind the host nginx; SSH key `~/.ssh/krugworld_lighthouse`. Never
+  touch the other projects on that box (tavern, kerisalus, devtrack). Server `.env` holds
+  `POSTGRES_PASSWORD` and `OPENAI_API_KEY`. Releases: see `DEPLOY.md` §3 and its notes.
+- Desk Gaby talks HTTPS to the live site (Let's Encrypt roots pinned in
+  `firmware/src/ca_certs.h`; LVGL's heap lives in PSRAM so TLS has internal RAM).
 - Remote: https://github.com/Morker/krugworld (private). The owner commits and pushes with
   GitHub Desktop.
 

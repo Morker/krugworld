@@ -10,8 +10,12 @@
 #define LV_COLOR_DEPTH 16
 
 /* LVGL's own heap for widgets and styles. Screen buffers are allocated
-   separately (see board.cpp), so this can stay small. */
+   separately (see board.cpp), so this can stay small. Allocated in PSRAM at
+   start-up rather than as a static array in internal RAM: HTTPS needs ~45 KB
+   of internal RAM for its TLS buffers, and widgets don't need the speed. */
 #define LV_MEM_SIZE (96 * 1024U)
+#define LV_MEM_POOL_INCLUDE <esp_heap_caps.h>
+#define LV_MEM_POOL_ALLOC(size) heap_caps_malloc(size, MALLOC_CAP_SPIRAM)
 
 /* Fonts: small text, numbers, and big headline numbers. */
 #define LV_FONT_MONTSERRAT_14 1

@@ -10,7 +10,7 @@ alongside it without touching it.
 | Folder | `/opt/kruggers-tavern/` | `/opt/krugworld/` |
 | App port (localhost only) | 8090 | **8096** |
 | Database | own `postgres:16` container | own `postgres:16` container |
-| Address | tavern.veteryr.online | **krugworld.veteryr.online** (suggested) |
+| Address | tavern.veteryr.online | **https://krugworld.veteryr.online** (live since 2026-10-15) |
 
 ## 1. Build (on your PC)
 
@@ -27,8 +27,8 @@ writes `deploy\krugworld.jar`.
 2. **Check port 8096 is free:** `ss -ltn | grep 8096` should print nothing.
 3. **Copy the deploy folder up** (from the repo root on your PC):
    ```powershell
-   scp -i ..\KruggerTavern\.ssh\tavern_access -r deploy ubuntu@43.156.150.155:/tmp/krugworld
-   ssh -i ..\KruggerTavern\.ssh\tavern_access ubuntu@43.156.150.155 "sudo mv /tmp/krugworld /opt/krugworld && sudo chown -R ubuntu /opt/krugworld"
+   scp -i $HOME\.ssh\krugworld_lighthouse -r deploy ubuntu@43.156.150.155:/tmp/krugworld
+   ssh -i $HOME\.ssh\krugworld_lighthouse ubuntu@43.156.150.155 "sudo mv /tmp/krugworld /opt/krugworld && sudo chown -R ubuntu /opt/krugworld"
    ```
 4. **Secrets:** on the server, `cp /opt/krugworld/.env.example /opt/krugworld/.env`
    and set `POSTGRES_PASSWORD` (`openssl rand -base64 24`). For the Steward,
@@ -50,8 +50,8 @@ writes `deploy\krugworld.jar`.
 
 ```powershell
 .\build.ps1
-scp -i ..\KruggerTavern\.ssh\tavern_access deploy\krugworld.jar ubuntu@43.156.150.155:/opt/krugworld/krugworld.jar
-ssh -i ..\KruggerTavern\.ssh\tavern_access ubuntu@43.156.150.155 "/opt/krugworld/redeploy.sh"
+scp -i $HOME\.ssh\krugworld_lighthouse deploy\krugworld.jar ubuntu@43.156.150.155:/opt/krugworld/krugworld.jar
+ssh -i $HOME\.ssh\krugworld_lighthouse ubuntu@43.156.150.155 "/opt/krugworld/redeploy.sh"
 ```
 
 Database changes need no manual step: Flyway applies any new
@@ -67,3 +67,23 @@ follow the three steps there (it reads Tavern's `/api/kv` export).
 ```bash
 docker compose -f /opt/krugworld/docker-compose.yml exec -T db pg_dump -U krugworld krugworld > krugworld-$(date +%F).sql
 ```
+
+## Notes from the first real deploy (2026-10-15)
+
+- **SSH key:** `~/.ssh/krugworld_lighthouse` (ed25519, made on the Windows PC). Its
+  public half is in `ubuntu`'s `~/.ssh/authorized_keys` on the server. On a new PC,
+  make a new key and add its `.pub` line the same way (Lighthouse console → OrcaTerm).
+- **Building on Windows:** if `build.ps1` stops on a JVM warning ("Sharing is only
+  supported for boot loader classes…"), that's PowerShell 5.1 treating any stderr as
+  an error, not a failed build. Run the same steps from Git Bash instead:
+  `cd frontend && npm run build`, then `cd backend && ./mvnw -q package`, then copy
+  `backend/target/krugworld-0.1.0.jar` to `deploy/krugworld.jar`. Set `JAVA_HOME` to an
+  installed JDK if the Tavern's portable one isn't there.
+- **Swap the jar safely:** upload as `krugworld.jar.new`, then `mv` it over the old one
+  and run `redeploy.sh`, so a half-finished upload is never the jar that starts.
+- **nginx for Desk Gaby:** `client_max_body_size 2m` (voice clips) and
+  `proxy_buffering off` on `/api/device/voice/speech/` so her voice streams instead of
+  arriving all at once. Both are in `nginx-krugworld.conf`; certbot added the 443 block.
+- **Fresh DNS names:** a home router may cache "no such name" for a while after the
+  record is created. Public resolvers (`nslookup krugworld.veteryr.online 8.8.8.8`)
+  show the truth; the desk device falls back to them on its own.

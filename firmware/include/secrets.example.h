@@ -6,7 +6,6 @@
 #define WIFI_SSID "your-wifi-name"
 #define WIFI_PASSWORD "your-wifi-password"
 
-// Where KrugWorld runs. While developing: this PC's LAN address
-// (ipconfig → IPv4 Address) and the backend's port. Later:
-// "https://krugworld.veteryr.online".
-#define KRUGWORLD_URL "http://192.168.1.10:8085"
+// Where KrugWorld runs: the live site, or while developing this PC's LAN
+// address and port, e.g. "http://192.168.1.10:8085" (ipconfig → IPv4 Address).
+#define KRUGWORLD_URL "https://krugworld.veteryr.online"

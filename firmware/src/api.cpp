@@ -3,6 +3,9 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
+
+#include "ca_certs.h"
 
 namespace api {
 
@@ -10,6 +13,17 @@ namespace {
 
 String baseUrl;
 constexpr uint16_t TIMEOUT_MS = 10000;
+
+// One connection of each kind, reused: only the network task makes requests,
+// one at a time. The secure one checks the server against Let's Encrypt's roots.
+WiFiClientSecure secureClient;
+WiFiClient plainClient;
+
+/** https:// URLs get TLS with certificate checks; http:// (a dev PC on the LAN) stays plain. */
+bool begin(HTTPClient &http, const String &url) {
+  if (url.startsWith("https://")) return http.begin(secureClient, url);
+  return http.begin(plainClient, url);
+}
 
 Status statusFor(int code) {
   if (code == 200 || code == 204) return Status::Ok;
@@ -27,13 +41,14 @@ void copy(char *dest, size_t size, const char *src) {
 
 void setBaseUrl(const char *url) {
   baseUrl = url;
+  secureClient.setCACert(LETSENCRYPT_ROOTS);
   while (baseUrl.endsWith("/")) baseUrl.remove(baseUrl.length() - 1);
 }
 
 Status pair(const char *code, const char *deviceName, Paired &out, char *message, size_t messageSize) {
   HTTPClient http;
   http.setTimeout(TIMEOUT_MS);
-  http.begin(baseUrl + "/api/device/pair");
+  begin(http, baseUrl + "/api/device/pair");
   http.addHeader("Content-Type", "application/json");
 
   JsonDocument request;
@@ -66,7 +81,7 @@ Status pair(const char *code, const char *deviceName, Paired &out, char *message
 Status fetchSummary(const char *token, Summary &out) {
   HTTPClient http;
   http.setTimeout(TIMEOUT_MS);
-  http.begin(baseUrl + "/api/device/summary");
+  begin(http, baseUrl + "/api/device/summary");
   http.addHeader("Authorization", String("Bearer ") + token);
   int httpCode = http.GET();
   Status status = statusFor(httpCode);
@@ -157,7 +172,7 @@ Status voice(const char *token, const uint8_t *wav, size_t size, VoiceReply &out
   HTTPClient http;
   // Hearing, thinking (maybe a few tool calls) and answering takes seconds.
   http.setTimeout(45000);
-  http.begin(baseUrl + "/api/device/voice");
+  begin(http, baseUrl + "/api/device/voice");
   http.addHeader("Authorization", String("Bearer ") + token);
   http.addHeader("Content-Type", "audio/wav");
   int httpCode = http.POST(const_cast<uint8_t *>(wav), size);
@@ -237,7 +252,7 @@ class PcmSink : public Stream {
 Status speak(const char *token, const char *path, void (*onSamples)(const int16_t *samples, size_t count)) {
   HTTPClient http;
   http.setTimeout(20000);
-  http.begin(baseUrl + path);
+  begin(http, baseUrl + path);
   http.addHeader("Authorization", String("Bearer ") + token);
   int httpCode = http.GET();
   Status status = statusFor(httpCode);
@@ -252,7 +267,7 @@ Status speak(const char *token, const char *path, void (*onSamples)(const int16_
 Status setWorkoutDone(const char *token, long workoutId, bool done) {
   HTTPClient http;
   http.setTimeout(TIMEOUT_MS);
-  http.begin(baseUrl + "/api/device/workouts/" + workoutId + "/done");
+  begin(http, baseUrl + "/api/device/workouts/" + workoutId + "/done");
   http.addHeader("Authorization", String("Bearer ") + token);
   http.addHeader("Content-Type", "application/json");
   int httpCode = http.POST(done ? "{\"done\":true}" : "{\"done\":false}");

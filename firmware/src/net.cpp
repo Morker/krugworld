@@ -32,6 +32,34 @@ void send(UpdateType type, const char *text = "", const api::Summary *summary = 
   xQueueSend(updates, &u, pdMS_TO_TICKS(500));
 }
 
+/** "krugworld.veteryr.online" out of "https://krugworld.veteryr.online:443/..." */
+String serverHost() {
+  String host = KRUGWORLD_URL;
+  int scheme = host.indexOf("://");
+  if (scheme >= 0) host = host.substring(scheme + 3);
+  int end = host.indexOf('/');
+  if (end >= 0) host = host.substring(0, end);
+  end = host.indexOf(':');
+  if (end >= 0) host = host.substring(0, end);
+  return host;
+}
+
+/**
+ * Use the network's own DNS first; if it can't find KrugWorld (a home router
+ * still caching "no such name" from before the domain existed, or just a
+ * flaky one), fall back to Cloudflare and Google for this session.
+ */
+void checkDns() {
+  String host = serverHost();
+  IPAddress ip;
+  if (ip.fromString(host)) return;  // a plain IP address needs no DNS
+  if (WiFi.hostByName(host.c_str(), ip) == 1) return;
+  WiFi.setDNS(IPAddress(1, 1, 1, 1), IPAddress(8, 8, 8, 8));
+  bool found = WiFi.hostByName(host.c_str(), ip) == 1;
+  Serial.printf("[net] local DNS couldn't find %s; public DNS %s\n", host.c_str(),
+                found ? ("found " + ip.toString()).c_str() : "couldn't either");
+}
+
 bool ensureWifi() {
   if (WiFi.status() == WL_CONNECTED) return true;
   send(UpdateType::Connecting, WIFI_SSID);
@@ -46,7 +74,12 @@ bool ensureWifi() {
     return false;
   }
   Serial.printf("[net] Wi-Fi up, IP %s\n", WiFi.localIP().toString().c_str());
+  checkDns();
   configTzTime(TIMEZONE, "pool.ntp.org", "time.google.com");
+  // HTTPS checks the certificate's dates, and the clock starts at 1970 on
+  // every boot: wait for the real time before the first request.
+  for (int i = 0; i < 60 && time(nullptr) < 1700000000; i++) delay(250);
+  if (time(nullptr) < 1700000000) Serial.println("[net] clock not set yet; HTTPS may fail until it is");
   return true;
 }
 
