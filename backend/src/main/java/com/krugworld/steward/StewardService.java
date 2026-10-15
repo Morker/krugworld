@@ -29,8 +29,9 @@ public class StewardService {
     private static final int MAX_TOOL_ROUNDS = 8;
 
     // The model ends its final reply with this line; pulled out server-side so
-    // the split doesn't depend on how the in-character text looks.
-    private static final Pattern SUBTITLE = Pattern.compile("(?m)^\\s*TRANSLATION:\\s*(.+)\\s*$");
+    // the split doesn't depend on how the in-character text looks. Models sometimes
+    // run it onto the same line as the reply, so it's matched anywhere, up to the end.
+    private static final Pattern SUBTITLE = Pattern.compile("(?s)\\s*\\bTRANSLATION:\\s*(.+?)\\s*$");
 
     private final StewardProperties props;
     private final StewardTools tools;

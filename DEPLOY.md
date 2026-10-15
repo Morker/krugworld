@@ -8,7 +8,7 @@ alongside it without touching it.
 | | Tavern (existing) | KrugWorld |
 |---|---|---|
 | Folder | `/opt/kruggers-tavern/` | `/opt/krugworld/` |
-| App port (localhost only) | 8090 | **8095** |
+| App port (localhost only) | 8090 | **8096** |
 | Database | own `postgres:16` container | own `postgres:16` container |
 | Address | tavern.veteryr.online | **krugworld.veteryr.online** (suggested) |
 
@@ -24,7 +24,7 @@ writes `deploy\krugworld.jar`.
 ## 2. First time on the server
 
 1. **DNS:** add an `A` record `krugworld.veteryr.online → 43.156.150.155`.
-2. **Check port 8095 is free:** `ss -ltn | grep 8095` should print nothing.
+2. **Check port 8096 is free:** `ss -ltn | grep 8096` should print nothing.
 3. **Copy the deploy folder up** (from the repo root on your PC):
    ```powershell
    scp -i ..\KruggerTavern\.ssh\tavern_access -r deploy ubuntu@43.156.150.155:/tmp/krugworld

@@ -89,6 +89,23 @@ class StewardIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void recurringEntriesCanBeAdded() throws Exception {
+        CurrentUser me = newUser();
+        model.thenCall("add_recurring", Map.of("type", "expense", "amount", 49.9, "category", "Bills",
+                        "day_of_month", 5, "note", "Internet"))
+                .thenSay("Every fifth of the month, so it shall be.");
+
+        postAs(me, "/api/steward/chat", Map.of("message", "internet 49.90 every 5th")).andExpect(status().isOk());
+
+        List<ChatMessage> secondCall = model.received().get(1);
+        ChatBlock.ToolResult result = (ChatBlock.ToolResult) secondCall.get(secondCall.size() - 1).content().get(0);
+        assertThat(result.isError()).as(result.content().toString()).isFalse();
+        getAs(me, "/api/recurring")
+                .andExpect(jsonPath("$[0].note").value("Internet"))
+                .andExpect(jsonPath("$[0].dayOfMonth").value(5));
+    }
+
+    @Test
     void historyIsTrimmedToStartOnAUserTurn() throws Exception {
         CurrentUser me = newUser();
         model.thenSay("Hello again.");
@@ -136,6 +153,8 @@ class StewardIntegrationTest extends IntegrationTest {
     void subtitleLineIsSplitOff() {
         assertThat(StewardService.splitSubtitle("Hail.\nTRANSLATION: Hello."))
                 .isEqualTo(new StewardReply("Hail.", "Hello."));
+        assertThat(StewardService.splitSubtitle("Gaji telah ditambah. TRANSLATION: Salary added."))
+                .isEqualTo(new StewardReply("Gaji telah ditambah.", "Salary added."));
         assertThat(StewardService.splitSubtitle("No subtitle here."))
                 .isEqualTo(new StewardReply("No subtitle here.", null));
     }

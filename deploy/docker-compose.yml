@@ -2,7 +2,7 @@
 # (see .env.example) and the jar, then run ./redeploy.sh.
 #
 # The app listens on 127.0.0.1 only — the host's nginx terminates HTTPS and
-# proxies to it. Port 8095 avoids the other projects on the box (8080, 8090).
+# proxies to it. Port 8096 avoids the other projects on the box (8080, 8090; Kerisalus took 8095).
 services:
   db:
     image: postgres:16
@@ -36,7 +36,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     ports:
-      - "127.0.0.1:8095:8080"
+      - "127.0.0.1:8096:8080"
 
 volumes:
   krugworld-db:

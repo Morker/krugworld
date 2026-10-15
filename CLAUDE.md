@@ -76,7 +76,7 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
   text reply, first audio byte ~1.1 s later. Owner's OpenAI key lives outside the repo in
   `C:\Users\Krugger\Desktop\key\krugworld api key\` — read it into `OPENAI_API_KEY`, never print it.
 - **Not deployed yet.** Planned: `krugworld.veteryr.online`, `/opt/krugworld`, app on
-  `127.0.0.1:8095` on the same shared server as the old Tavern (see `DEPLOY.md`; never
+  `127.0.0.1:8096` on the same shared server as the old Tavern (see `DEPLOY.md`; never
   touch the other projects' containers on that box). DNS record + certbot still needed.
 - Remote: https://github.com/Morker/krugworld (private). The owner commits and pushes with
   GitHub Desktop.
