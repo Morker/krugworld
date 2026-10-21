@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { IconArrowsLeftRight, IconPencil, IconPlus, IconRepeat, IconTrash } from '@tabler/icons-react'
+import { IconArrowsLeftRight, IconCoins, IconPencil, IconPlus, IconRepeat, IconTrash } from '@tabler/icons-react'
 import { useAccounts, useCategories, useDeleteEntry, useEntries, useSummary } from '../api/hooks'
 import type { Entry } from '../api/types'
 import { EntryForm } from '../components/EntryForm'
@@ -68,8 +68,8 @@ export function LedgerPage() {
         {entries.isLoading && <Loading />}
         <ErrorLine error={entries.error ?? remove.error} />
         {entries.data && shown.length === 0 && (
-          <Empty>
-            Nothing logged {accountId || categoryId ? 'that matches' : 'this month'}.
+          <Empty icon={<IconCoins size={26} />}>
+            No loot {accountId || categoryId ? 'that matches' : 'logged this month'} yet.
             <div><button onClick={() => setEditing('new')}>Log an entry</button></div>
           </Empty>
         )}

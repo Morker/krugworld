@@ -35,6 +35,16 @@ services:
       KRUGWORLD_STEWARD_PROVIDER: ${KRUGWORLD_STEWARD_PROVIDER:-openai}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Password-reset email. With SMTP_HOST empty the feature stays off and
+      # "forgot password" says so (see .env.example).
+      SPRING_MAIL_HOST: ${SMTP_HOST:-}
+      SPRING_MAIL_PORT: ${SMTP_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SMTP_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SMTP_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      KRUGWORLD_MAIL_FROM: ${MAIL_FROM:-}
+      KRUGWORLD_PUBLIC_URL: ${PUBLIC_URL:-https://krugworld.veteryr.online}
     ports:
       - "127.0.0.1:8096:8080"
 

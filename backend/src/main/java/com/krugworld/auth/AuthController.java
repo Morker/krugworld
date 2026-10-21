@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -44,7 +45,9 @@ public class AuthController {
     public record RegisterRequest(
             @NotBlank @Pattern(regexp = "^[A-Za-z0-9_-]{3,40}$",
                     message = "3–40 letters, digits, underscores or hyphens") String username,
-            @NotBlank @Size(min = 8, max = 100, message = "at least 8 characters") String password) {
+            @NotBlank @Size(min = 8, max = 100, message = "at least 8 characters") String password,
+            /** Optional, but it's the only way to get a password back by email. */
+            @Email @Size(max = 254) String email) {
     }
 
     /** Every field is optional: send only what changes. */
@@ -53,7 +56,9 @@ public class AuthController {
             @Pattern(regexp = "steel|oak|forest|parchment") String theme,
             @Min(500) @Max(10000) Integer calorieGoal,
             @Pattern(regexp = "[CF]") String tempUnit,
-            @Valid WeatherLocation weather) {
+            @Valid WeatherLocation weather,
+            /** Blank clears it. */
+            @Email @Size(max = 254) String email) {
     }
 
     /** Where the Hall's weather is for. An empty place clears it. */
@@ -63,12 +68,12 @@ public class AuthController {
             @DecimalMin("-180") @DecimalMax("180") BigDecimal lon) {
     }
 
-    public record Me(Long id, String username, String skin, String theme, int calorieGoal, String tempUnit,
-                     WeatherLocation weather) {
+    public record Me(Long id, String username, String email, String skin, String theme, int calorieGoal,
+                     String tempUnit, WeatherLocation weather) {
         static Me of(User u) {
             WeatherLocation weather = u.getWeatherPlace() == null ? null
                     : new WeatherLocation(u.getWeatherPlace(), u.getWeatherLat(), u.getWeatherLon());
-            return new Me(u.getId(), u.getUsername(), u.getSkin(), u.getTheme(), u.getCalorieGoal(),
+            return new Me(u.getId(), u.getUsername(), u.getEmail(), u.getSkin(), u.getTheme(), u.getCalorieGoal(),
                     u.getTempUnit(), weather);
         }
     }
@@ -99,9 +104,15 @@ public class AuthController {
         if (users.existsByUsernameIgnoreCase(username)) {
             throw new ApiException(HttpStatus.CONFLICT, "username_taken", "That name is already carved here.");
         }
+        String email = cleanEmail(body.email());
+        if (email != null && users.existsByEmailIgnoreCase(email)) {
+            throw new ApiException(HttpStatus.CONFLICT, "email_taken", "That email already belongs to another account.");
+        }
 
         User saved = tx.execute(status -> {
-            User user = users.save(new User(username, encoder.encode(body.password())));
+            User created = new User(username, encoder.encode(body.password()));
+            created.setEmail(email);
+            User user = users.save(created);
             events.publishEvent(new UserRegistered(user.getId()));
             return user;
         });
@@ -126,6 +137,13 @@ public class AuthController {
     @PatchMapping("/me/preferences")
     public Me updatePreferences(@AuthenticationPrincipal CurrentUser me, @Valid @RequestBody PreferencesRequest body) {
         User user = load(me);
+        if (body.email() != null) {
+            String email = cleanEmail(body.email());
+            if (email != null && users.existsByEmailIgnoreCaseAndIdNot(email, user.getId())) {
+                throw new ApiException(HttpStatus.CONFLICT, "email_taken", "That email already belongs to another account.");
+            }
+            user.setEmail(email);
+        }
         if (body.skin() != null) {
             user.setSkin(body.skin());
         }
@@ -147,6 +165,11 @@ public class AuthController {
             user.setWeatherLocation(clear ? null : w.place().trim(), clear ? null : w.lat(), clear ? null : w.lon());
         }
         return Me.of(users.save(user));
+    }
+
+    /** Trimmed; blank means "none". */
+    private static String cleanEmail(String raw) {
+        return raw == null || raw.isBlank() ? null : raw.trim();
     }
 
     private User load(CurrentUser me) {

@@ -104,7 +104,8 @@ public class SecurityConfig {
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(csrfHandler))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/status").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/status",
+                    "/api/auth/password-reset/request", "/api/auth/password-reset/confirm").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll())
             .formLogin(form -> form

@@ -229,6 +229,29 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
 
 .empty { text-align: center; padding: 20px 10px; color: var(--muted); }
 .empty .btn, .empty button { margin-top: 10px; }
+.empty-icon {
+  display: grid; place-items: center;
+  width: 52px; height: 52px; margin: 0 auto 10px;
+  border: var(--border-w) dashed var(--line); border-radius: var(--radius);
+  color: var(--accent); background: var(--panel-2);
+}
+
+/* Loading: bars in the shape of the content to come, with a slow glint. */
+.skeleton { display: grid; gap: 10px; padding: 6px 0; }
+.skeleton-line {
+  display: block; height: 14px; max-width: 100%;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--track) 25%, var(--line) 50%, var(--track) 75%);
+  background-size: 200% 100%;
+  animation: glint 1.4s ease-in-out infinite;
+}
+@keyframes glint { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line { animation: none; }
+}
+
+.page-error { text-align: center; padding: 30px 10px; }
+.page-error button { margin-top: 10px; }
 
 .toast {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -443,3 +466,5 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
   .summon .portrait { width: 44px; height: 44px; }
   .summon-label { display: none; }
 }
+
+.auth .skeleton { width: min(400px, 100%); }

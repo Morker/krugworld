@@ -94,10 +94,25 @@ export function ErrorLine({ error }: { error: unknown }) {
   return text ? <p className="field-error" role="alert">{text}</p> : null
 }
 
-export function Loading() {
-  return <p className="muted">Loading…</p>
+const SKELETON_WIDTHS = ['92%', '78%', '64%', '84%', '58%']
+
+/** Placeholder bars in the shape of the content to come, instead of a bare "Loading…". */
+export function Loading({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="skeleton" role="status" aria-live="polite">
+      <span className="sr-only">Loading…</span>
+      {Array.from({ length: rows }, (_, i) => (
+        <span key={i} className="skeleton-line" style={{ width: SKELETON_WIDTHS[i % SKELETON_WIDTHS.length] }} />
+      ))}
+    </div>
+  )
 }
 
-export function Empty({ children }: { children: ReactNode }) {
-  return <div className="empty">{children}</div>
+export function Empty({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="empty">
+      {icon && <div className="empty-icon" aria-hidden="true">{icon}</div>}
+      {children}
+    </div>
+  )
 }

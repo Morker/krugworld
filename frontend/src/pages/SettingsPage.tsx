@@ -11,7 +11,7 @@ import {
   useTavernImport,
 } from '../api/hooks'
 import type { Skin, Theme } from '../api/types'
-import { ErrorLine, Panel } from '../components/ui'
+import { ErrorLine, Field, Panel } from '../components/ui'
 import { applySkin, THEMES } from '../skin/skin'
 
 export function SettingsPage() {
@@ -60,11 +60,47 @@ export function SettingsPage() {
           <ErrorLine error={save.error} />
         </Panel>
 
+        <EmailSettings />
         <WeatherSettings />
         <DeskGaby />
         <TavernImport />
       </div>
     </>
+  )
+}
+
+/** The email a forgotten-passphrase link is sent to. Nothing else uses it. */
+function EmailSettings() {
+  const me = useMe().data
+  const save = useSavePreferences()
+  const [email, setEmail] = useState(me?.email ?? '')
+  const changed = email.trim() !== (me?.email ?? '')
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    save.mutate({ email: email.trim() })
+  }
+
+  return (
+    <Panel title="Recovery email">
+      <p className="small muted" style={{ marginTop: 0 }}>
+        If you forget your passphrase, a reset link is sent here. It's used for nothing else.
+        {!me?.email && ' You have none set yet, so a forgotten passphrase could not be recovered.'}
+      </p>
+      <form onSubmit={submit} className="stack">
+        <Field label="Email">
+          <input type="email" autoComplete="email" value={email}
+                 onChange={(e) => { setEmail(e.target.value); save.reset() }} />
+        </Field>
+        <ErrorLine error={save.error} />
+        <div className="row-start">
+          <button type="submit" className="primary" disabled={!changed || save.isPending}>
+            {save.isPending ? 'Saving…' : 'Save email'}
+          </button>
+          {save.isSuccess && !changed && <span className="small pos" role="status"><IconCheck size={14} aria-hidden="true" /> Saved</span>}
+        </div>
+      </form>
+    </Panel>
   )
 }
 

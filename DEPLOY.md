@@ -57,6 +57,30 @@ ssh -i $HOME\.ssh\krugworld_lighthouse ubuntu@43.156.150.155 "/opt/krugworld/red
 Database changes need no manual step: Flyway applies any new
 `V<n>__*.sql` migrations when the app starts.
 
+## Password reset by email (optional)
+
+Without this, a forgotten passphrase can only be fixed by hand in the
+database. To turn on "Forgot your passphrase?":
+
+1. Pick a mailbox to send from. With Gmail: turn on 2-step verification, then
+   create an **App password** at <https://myaccount.google.com/apppasswords>.
+   Use that 16-character password, never your real one.
+2. On the server, add to `/opt/krugworld/.env` (one line per key, no stray
+   newlines):
+   ```
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USERNAME=you@gmail.com
+   SMTP_PASSWORD=the-app-password
+   MAIL_FROM=you@gmail.com
+   PUBLIC_URL=https://krugworld.veteryr.online
+   ```
+3. Apply it: `cd /opt/krugworld && docker compose up -d app`.
+4. Each person adds their email in **Settings → Recovery email** (new accounts
+   can add it when registering). Accounts with no email can't use the reset.
+
+Port 587 is used on purpose: Tencent Cloud blocks outbound port 25.
+
 ## 4. Bring your Tavern ledger across
 
 Log in to KrugWorld, open **Settings → Import from Krugger's Tavern**, and

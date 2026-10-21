@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { IconPencil, IconPlus, IconTrash } from '@tabler/icons-react'
+import { IconCalendarEvent, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react'
 import { useDeleteEvent, useEvents, useSaveEvent } from '../api/lifeHooks'
 import type { CalendarEvent } from '../api/types'
 import { Empty, ErrorLine, Field, Modal, MonthPicker, Panel } from '../components/ui'
@@ -71,8 +71,8 @@ export function CalendarPage() {
         <Panel title={dayLabel(selected)}
                action={<button className="ghost" onClick={() => setEditing('new')}><IconPlus size={16} /> Add</button>}>
           {chosen.length === 0 ? (
-            <Empty>
-              Nothing planned.
+            <Empty icon={<IconCalendarEvent size={26} />}>
+              A quiet stretch. Nothing planned yet.
               <div><button onClick={() => setEditing('new')}>Add an event</button></div>
             </Empty>
           ) : (
