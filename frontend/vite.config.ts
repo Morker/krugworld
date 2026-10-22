@@ -31,6 +31,8 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
+        // Phone notifications: the push and notificationclick handlers.
+        importScripts: ['push-sw.js'],
         // Opening /ledger offline still gets the app, but never the API.
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [

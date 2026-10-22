@@ -81,6 +81,18 @@ database. To turn on "Forgot your passphrase?":
 
 Port 587 is used on purpose: Tencent Cloud blocks outbound port 25.
 
+## Phone notifications (Web Push)
+
+Nothing to configure. On first use the app generates its VAPID key pair and
+keeps it in the `app_secret` table (row `vapid-keys`). **Never delete that
+row**: every phone subscribed with its public key, and a new key silently
+stops notifications to all of them until each one turns them on again.
+
+The server must be able to make outbound HTTPS calls to the push services
+(`fcm.googleapis.com` for Chrome on Android). To turn it on: open the site on
+the phone, **Settings → Notifications → Turn on for this device**, then
+**Send a test**. Reminders are checked every 5 minutes (see `ReminderJob`).
+
 ## 4. Bring your Tavern ledger across
 
 Log in to KrugWorld, open **Settings → Import from Krugger's Tavern**, and

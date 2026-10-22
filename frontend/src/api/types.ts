@@ -181,3 +181,5 @@ export type StewardReply = { reply: string; subtitle: string | null; remaining: 
 
 export type Device = { id: number; name: string; createdAt: string; lastSeenAt: string | null }
 export type PairingCode = { code: string; expiresAt: string }
+export type PushDevice = { id: number; label: string; endpoint: string; createdAt: string; lastSentAt: string | null }
+export type PushDelivery = { sent: number; devices: number }
