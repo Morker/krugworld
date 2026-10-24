@@ -2,6 +2,8 @@ package com.krugworld.push;
 
 import com.krugworld.game.CharacterService;
 import com.krugworld.game.CharacterService.CharacterSheet;
+import com.krugworld.ledger.LedgerEntry;
+import com.krugworld.ledger.LedgerQueries;
 import com.krugworld.life.LifeService;
 import com.krugworld.life.LifeService.Today;
 import org.slf4j.Logger;
@@ -34,14 +36,16 @@ public class ReminderJob {
     private final PushService push;
     private final CharacterService characters;
     private final LifeService life;
+    private final LedgerQueries ledger;
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
-    public ReminderJob(PushService push, CharacterService characters, LifeService life, JdbcTemplate jdbc,
-                       Clock clock) {
+    public ReminderJob(PushService push, CharacterService characters, LifeService life, LedgerQueries ledger,
+                       JdbcTemplate jdbc, Clock clock) {
         this.push = push;
         this.characters = characters;
         this.life = life;
+        this.ledger = ledger;
         this.jdbc = jdbc;
         this.clock = clock;
     }
@@ -74,7 +78,9 @@ public class ReminderJob {
         Today today = life.today(userId);
         List<Boolean> last7 = sheet.streak().last7();
         Reminders.Day day = new Reminders.Day(now, today.upcoming(), today.workouts(), sheet.streak().current(),
-                !last7.isEmpty() && last7.get(last7.size() - 1), sheet.budget().categories());
+                !last7.isEmpty() && last7.get(last7.size() - 1), sheet.budget().categories(),
+                today.calories(), today.calorieGoal(),
+                ledger.total(userId, LedgerEntry.Type.EXPENSE, today.date(), today.date()));
 
         int sent = 0;
         for (Reminders.Reminder r : Reminders.due(day)) {

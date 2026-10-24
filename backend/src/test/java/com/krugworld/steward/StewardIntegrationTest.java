@@ -57,6 +57,21 @@ class StewardIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void typedChatAsksForOneLanguagePerReply() throws Exception {
+        CurrentUser me = newUser();
+        model.thenSay("Tiada apa-apa lagi hari ini.\nTRANSLATION: Nothing else today.");
+
+        postAs(me, "/api/steward/chat", Map.of("message", "ada apa hari ini?")).andExpect(status().isOk());
+
+        // The browser reads replies, so no rojak there; the desk device keeps it (DeviceIntegrationTest).
+        assertThat(model.prompts()).singleElement().satisfies(prompt -> {
+            assertThat(prompt).contains("reply in ONE language only")
+                    .contains("Never mix English and Malay")
+                    .doesNotContain("rojak to rojak");
+        });
+    }
+
+    @Test
     void aToolErrorGoesBackToTheModelToExplain() throws Exception {
         CurrentUser me = newUser();
         model.thenCall("add_entry", Map.of("type", "expense", "amount", 5, "category", "Dragons"))

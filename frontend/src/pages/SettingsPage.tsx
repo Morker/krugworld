@@ -285,8 +285,9 @@ function PhoneNotifications() {
   return (
     <Panel title="Notifications">
       <p className="small muted" style={{ marginTop: 0 }}>
-        Gaby sends a raven to your phone: an event within the hour, training not done by 7 pm,
-        a streak at risk by 9 pm, and a budget running low or over.
+        Gaby sends a raven to your phone: an event within the hour, meals to log at 2 pm and 10 pm,
+        training not done by 7 pm, a streak at risk by 9 pm, spending to log at 11 pm, and a budget
+        running low or over.
       </p>
 
       {!PUSH_SUPPORTED ? (

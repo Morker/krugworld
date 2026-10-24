@@ -19,6 +19,7 @@ public class FakeChatProvider implements ChatProvider {
 
     private final Deque<Function<List<ChatMessage>, ChatTurn>> script = new ArrayDeque<>();
     private final List<List<ChatMessage>> received = new ArrayList<>();
+    private final List<String> prompts = new ArrayList<>();
 
     @Override
     public String id() {
@@ -38,6 +39,7 @@ public class FakeChatProvider implements ChatProvider {
     @Override
     public synchronized ChatTurn send(String systemPrompt, List<ChatMessage> conversation, List<StewardTool> tools) {
         received.add(List.copyOf(conversation));
+        prompts.add(systemPrompt);
         if (script.isEmpty()) {
             throw new IllegalStateException("FakeChatProvider ran out of scripted turns");
         }
@@ -47,6 +49,7 @@ public class FakeChatProvider implements ChatProvider {
     public synchronized void reset() {
         script.clear();
         received.clear();
+        prompts.clear();
     }
 
     /** Next turn: ask to run one tool. */
@@ -68,5 +71,10 @@ public class FakeChatProvider implements ChatProvider {
 
     public synchronized List<List<ChatMessage>> received() {
         return List.copyOf(received);
+    }
+
+    /** The system prompt of every call, in order. */
+    public synchronized List<String> prompts() {
+        return List.copyOf(prompts);
     }
 }

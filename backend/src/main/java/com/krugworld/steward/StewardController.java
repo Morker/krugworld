@@ -68,7 +68,7 @@ public class StewardController {
         usage.charge(me.id());
 
         try {
-            StewardReply reply = steward.chat(me.id(), conversation(body.history(), message));
+            StewardReply reply = steward.chat(me.id(), conversation(body.history(), message), StewardService.Channel.CHAT);
             return new ChatResponse(reply.text(), reply.subtitle(), usage.remaining(me.id()));
         } catch (StewardException e) {
             log.warn("Steward chat failed for user {}: {}", me.id(), e.getMessage(), e);

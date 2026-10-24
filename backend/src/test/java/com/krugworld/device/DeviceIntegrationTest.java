@@ -197,6 +197,9 @@ class DeviceIntegrationTest extends IntegrationTest {
 
         // The entry is real, like any other.
         getAs(me, "/api/entries").andExpect(jsonPath("$[0].note").value("Nasi lemak"));
+        // Spoken aloud, Gaby keeps the user's English-Malay mix.
+        assertThat(model.prompts()).allSatisfy(prompt -> assertThat(prompt).contains("rojak to rojak")
+                .doesNotContain("ONE language only"));
 
         String url = reply.get("speech").asText();
         mvc.perform(get(url).header("Authorization", "Bearer " + token))

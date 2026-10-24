@@ -31,7 +31,8 @@ public final class Reminders {
     }
 
     public record Day(LocalDateTime now, List<EventView> upcoming, List<TodayWorkout> workouts,
-                      int streak, boolean activeToday, List<CategoryBudget> budgets) {
+                      int streak, boolean activeToday, List<CategoryBudget> budgets,
+                      int calories, int calorieGoal, BigDecimal spentToday) {
     }
 
     static final int EVENT_LEAD_MINUTES = 60;
@@ -40,6 +41,10 @@ public final class Reminders {
     /** Budget warnings wait for waking hours; a 2 a.m. buzz about groceries helps no one. */
     static final int BUDGET_FROM_HOUR = 9;
     static final int BUDGET_UNTIL_HOUR = 22;
+    /** Fixed check-ins the owner asked for. Each fires once, any time within its hour, so a restart at 14:00 still catches it. */
+    static final int MEAL_LOG_MIDDAY_HOUR = 14;
+    static final int MEAL_LOG_NIGHT_HOUR = 22;
+    static final int MONEY_LOG_HOUR = 23;
     private static final BigDecimal LOW_SHARE = new BigDecimal("0.15");
 
     private Reminders() {
@@ -51,6 +56,8 @@ public final class Reminders {
         workoutPending(d, due);
         streakAtRisk(d, due);
         budgets(d, due);
+        mealLog(d, due);
+        moneyLog(d, due);
         return due;
     }
 
@@ -117,6 +124,33 @@ public final class Reminders {
                         12 * 3600));
             }
         }
+    }
+
+    /** 2 pm and 10 pm: log meals, with today's count so far. */
+    private static void mealLog(Day d, List<Reminder> due) {
+        int hour = d.now().getHour();
+        if (hour != MEAL_LOG_MIDDAY_HOUR && hour != MEAL_LOG_NIGHT_HOUR) {
+            return;
+        }
+        String soFar = d.calorieGoal() > 0
+                ? "So far today: " + d.calories() + " of " + d.calorieGoal() + " kcal."
+                : "So far today: " + d.calories() + " kcal.";
+        due.add(new Reminder("MEAL_LOG", d.now().toLocalDate() + ":" + hour,
+                hour == MEAL_LOG_MIDDAY_HOUR ? "Time to log thy meals" : "Log the day's last meals",
+                soFar + " Add what thou hast eaten so the count stays true.", "/vitals", 3600));
+    }
+
+    /** 11 pm: log the day's spending, with what's logged so far. */
+    private static void moneyLog(Day d, List<Reminder> due) {
+        if (d.now().getHour() != MONEY_LOG_HOUR) {
+            return;
+        }
+        BigDecimal spent = d.spentToday() == null ? BigDecimal.ZERO : d.spentToday();
+        String body = spent.signum() > 0
+                ? "The loot log shows " + rm(spent) + " spent today. Add anything missing before midnight."
+                : "Nothing logged as spent today. If coin left thy purse, log it before midnight.";
+        due.add(new Reminder("MONEY_LOG", d.now().toLocalDate().toString(), "Spent any coin today?", body,
+                "/ledger", 3600));
     }
 
     private static String rm(BigDecimal amount) {

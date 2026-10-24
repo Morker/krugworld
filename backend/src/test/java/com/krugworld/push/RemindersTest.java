@@ -19,12 +19,14 @@ class RemindersTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 10, 22);
 
     private static Reminders.Day at(int hour, int minute) {
-        return new Reminders.Day(TODAY.atTime(hour, minute), List.of(), List.of(), 0, true, List.of());
+        return new Reminders.Day(TODAY.atTime(hour, minute), List.of(), List.of(), 0, true, List.of(),
+                0, 0, BigDecimal.ZERO);
     }
 
     private static Reminders.Day with(Reminders.Day d, List<EventView> events, List<TodayWorkout> workouts,
                                       int streak, boolean active, List<CategoryBudget> budgets) {
-        return new Reminders.Day(d.now(), events, workouts, streak, active, budgets);
+        return new Reminders.Day(d.now(), events, workouts, streak, active, budgets,
+                d.calories(), d.calorieGoal(), d.spentToday());
     }
 
     private static CategoryBudget budget(long id, String name, String total, String left) {
@@ -40,14 +42,14 @@ class RemindersTest {
 
     @Test
     void anEventWithinTheHourIsDueOncePerOccurrence() {
-        EventView dentist = new EventView(42L, TODAY, LocalTime.of(15, 0), "Dentist");
-        List<Reminders.Reminder> due = Reminders.due(with(at(14, 30), List.of(dentist), List.of(), 0, true, List.of()));
+        EventView dentist = new EventView(42L, TODAY, LocalTime.of(11, 0), "Dentist");
+        List<Reminders.Reminder> due = Reminders.due(with(at(10, 30), List.of(dentist), List.of(), 0, true, List.of()));
 
         assertThat(due).singleElement().satisfies(r -> {
             assertThat(r.kind()).isEqualTo("EVENT_SOON");
             assertThat(r.ref()).isEqualTo("42:2026-10-22");
             assertThat(r.title()).isEqualTo("Dentist");
-            assertThat(r.body()).isEqualTo("At 15:00, in 30 minutes. Don't be late!");
+            assertThat(r.body()).isEqualTo("At 11:00, in 30 minutes. Don't be late!");
             assertThat(r.ttlSeconds()).isEqualTo(1800);
         });
     }
@@ -55,11 +57,11 @@ class RemindersTest {
     @Test
     void eventsTooFarAwayPastUntimedOrNotTodayAreNot() {
         List<EventView> events = List.of(
-                new EventView(1L, TODAY, LocalTime.of(16, 0), "Later"),
-                new EventView(2L, TODAY, LocalTime.of(14, 0), "Already started"),
+                new EventView(1L, TODAY, LocalTime.of(12, 0), "Later"),
+                new EventView(2L, TODAY, LocalTime.of(10, 0), "Already started"),
                 new EventView(3L, TODAY, null, "All day"),
-                new EventView(4L, TODAY.plusDays(1), LocalTime.of(14, 40), "Tomorrow"));
-        assertThat(Reminders.due(with(at(14, 30), events, List.of(), 0, true, List.of()))).isEmpty();
+                new EventView(4L, TODAY.plusDays(1), LocalTime.of(10, 40), "Tomorrow"));
+        assertThat(Reminders.due(with(at(10, 30), events, List.of(), 0, true, List.of()))).isEmpty();
     }
 
     @Test
@@ -105,6 +107,45 @@ class RemindersTest {
     void budgetWarningsWaitForWakingHours() {
         List<CategoryBudget> budgets = List.of(budget(8, "Games", "100.00", "-1.00"));
         assertThat(Reminders.due(with(at(8, 0), List.of(), List.of(), 0, true, budgets))).isEmpty();
-        assertThat(Reminders.due(with(at(22, 0), List.of(), List.of(), 0, true, budgets))).isEmpty();
+        assertThat(Reminders.due(with(at(22, 0), List.of(), List.of(), 0, true, budgets)))
+                .extracting(Reminders.Reminder::kind).doesNotContain("BUDGET_OVER");
+    }
+
+    private static Reminders.Day eating(int hour, int calories, int goal, String spent) {
+        Reminders.Day d = at(hour, 30);
+        return new Reminders.Day(d.now(), List.of(), List.of(), 0, true, List.of(), calories, goal,
+                new BigDecimal(spent));
+    }
+
+    @Test
+    void mealsAreLoggedAtTwoAndTenWithTodaysCount() {
+        assertThat(Reminders.due(eating(13, 850, 2000, "0"))).isEmpty();
+        assertThat(Reminders.due(eating(14, 850, 2000, "0"))).singleElement().satisfies(r -> {
+            assertThat(r.kind()).isEqualTo("MEAL_LOG");
+            assertThat(r.ref()).isEqualTo("2026-10-22:14");
+            assertThat(r.title()).isEqualTo("Time to log thy meals");
+            assertThat(r.body()).startsWith("So far today: 850 of 2000 kcal.");
+            assertThat(r.url()).isEqualTo("/vitals");
+        });
+        // A different ref at night, so the 2 pm one doesn't swallow it.
+        assertThat(Reminders.due(eating(22, 1900, 0, "0"))).singleElement().satisfies(r -> {
+            assertThat(r.ref()).isEqualTo("2026-10-22:22");
+            assertThat(r.title()).isEqualTo("Log the day's last meals");
+            assertThat(r.body()).startsWith("So far today: 1900 kcal.");
+        });
+    }
+
+    @Test
+    void spendingIsLoggedAtElevenWithTodaysTotal() {
+        assertThat(Reminders.due(eating(22, 0, 0, "23.5")))
+                .extracting(Reminders.Reminder::kind).doesNotContain("MONEY_LOG");
+        assertThat(Reminders.due(eating(23, 0, 0, "23.5"))).singleElement().satisfies(r -> {
+            assertThat(r.kind()).isEqualTo("MONEY_LOG");
+            assertThat(r.ref()).isEqualTo("2026-10-22");
+            assertThat(r.body()).isEqualTo("The loot log shows RM 23.50 spent today. Add anything missing before midnight.");
+            assertThat(r.url()).isEqualTo("/ledger");
+        });
+        assertThat(Reminders.due(eating(23, 0, 0, "0"))).singleElement()
+                .satisfies(r -> assertThat(r.body()).startsWith("Nothing logged as spent today."));
     }
 }

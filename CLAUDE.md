@@ -67,8 +67,11 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
   Barlow Condensed**, four backgrounds, **Knight's steel** (`#151a22`) default.
 - **Gaby** (was "Barnaby"): female pixel-art steward (`frontend/src/steward/Portrait.tsx`),
   same family as before — burgundy cap + gold feather, gold spectacles, teal coat — with
-  auburn braids. Docks in the right column on wide screens. Replies in the user's mix of
-  **English and Malay** (rojak), light medieval flavour, short enough to be spoken aloud.
+  auburn braids. Docks in the right column on wide screens. Understands **English and Malay**
+  (rojak), light medieval flavour, short enough to be spoken aloud. **Browser chat replies in
+  one language per reply** (whichever the user's message is mostly in, never mixed: owner's
+  request 2026-10-22); **Desk Gaby's spoken replies keep the rojak mix**. Chosen per call via
+  `StewardService.Channel` (CHAT / VOICE).
 - **Language rule:** only Gaby's *spoken/chat reply* is rojak. Everything shown as screen
   text is English: device labels, her daily line (`GabyLine`), and the reply subtitle
   (the `TRANSLATION:` line). The "You: ..." transcript shows the user's own words as said.

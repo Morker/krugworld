@@ -46,7 +46,11 @@ public class WebPushSender implements PushSender {
                     .header("Content-Encoding", "aes128gcm")
                     .header("Content-Type", "application/octet-stream")
                     .header("TTL", Integer.toString(ttlSeconds))
-                    .header("Urgency", "normal")
+                    // High, not normal: every message here is a time-bound reminder. Google
+                    // delivers "normal" pushes as normal-priority FCM, which an idle Android
+                    // phone (Doze) holds back until a maintenance window, often past the TTL,
+                    // so they were silently lost while a test sent in hand still showed.
+                    .header("Urgency", "high")
                     .POST(HttpRequest.BodyPublishers.ofByteArray(body))
                     .build();
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());

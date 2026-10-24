@@ -3,6 +3,8 @@ package com.krugworld.push;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.krugworld.common.ApiException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +24,8 @@ import java.util.Locale;
  */
 @Service
 public class PushService {
+
+    private static final Logger log = LoggerFactory.getLogger(PushService.class);
 
     /** Chrome/Edge/Samsung (Google), Firefox (Mozilla), Edge on Windows (Microsoft), Safari (Apple). */
     static final List<String> PUSH_HOSTS = List.of(
@@ -124,7 +128,11 @@ public class PushService {
                         rs.getString("p256dh"), rs.getString("auth"))), userId);
         int sent = 0;
         for (Sub sub : subs) {
-            switch (sender.send(sub.target(), payload, message.ttlSeconds())) {
+            PushSender.Result result = sender.send(sub.target(), payload, message.ttlSeconds());
+            // One line per delivery: "accepted by the push service" is the most the
+            // server can know, and it's what tells a lost reminder from an unsent one.
+            log.info("Push {} to subscription {} (user {}): {}", message.tag(), sub.id(), userId, result);
+            switch (result) {
                 case SENT -> {
                     sent++;
                     jdbc.update("UPDATE push_subscription SET last_sent_at = now() WHERE id = ?", sub.id());
