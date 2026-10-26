@@ -1,5 +1,6 @@
 package com.krugworld.push;
 
+import com.krugworld.debt.DebtService;
 import com.krugworld.game.CharacterService;
 import com.krugworld.game.CharacterService.CharacterSheet;
 import com.krugworld.ledger.LedgerEntry;
@@ -37,15 +38,17 @@ public class ReminderJob {
     private final CharacterService characters;
     private final LifeService life;
     private final LedgerQueries ledger;
+    private final DebtService debts;
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
     public ReminderJob(PushService push, CharacterService characters, LifeService life, LedgerQueries ledger,
-                       JdbcTemplate jdbc, Clock clock) {
+                       DebtService debts, JdbcTemplate jdbc, Clock clock) {
         this.push = push;
         this.characters = characters;
         this.life = life;
         this.ledger = ledger;
+        this.debts = debts;
         this.jdbc = jdbc;
         this.clock = clock;
     }
@@ -80,7 +83,8 @@ public class ReminderJob {
         Reminders.Day day = new Reminders.Day(now, today.upcoming(), today.workouts(), sheet.streak().current(),
                 !last7.isEmpty() && last7.get(last7.size() - 1), sheet.budget().categories(),
                 today.calories(), today.calorieGoal(),
-                ledger.total(userId, LedgerEntry.Type.EXPENSE, today.date(), today.date()));
+                ledger.total(userId, LedgerEntry.Type.EXPENSE, today.date(), today.date()),
+                debts.open(userId));
 
         int sent = 0;
         for (Reminders.Reminder r : Reminders.due(day)) {

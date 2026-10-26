@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.security.interfaces.ECPublicKey;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Map;
@@ -112,5 +113,27 @@ class PushIntegrationTest extends IntegrationTest {
         reminders.run(now.plusMinutes(5));
 
         assertThat(pushes.sentTo(phone)).filteredOn(s -> s.payload().contains("Dentist")).hasSize(1);
+    }
+
+    @Test
+    void aDebtDueTodayIsNudgedOnceAndATickedOneNotAtAll() throws Exception {
+        LocalDate today = LocalDate.now(clock);
+        LocalDateTime morning = today.atTime(10, 0);
+
+        CurrentUser me = newUser();
+        String phone = endpoint();
+        postAs(me, "/api/push/subscriptions", subscription(phone)).andExpect(status().isOk());
+        postAs(me, "/api/debts", Map.of("direction", "THEY_OWE", "person", "Ali", "amount", "50.00",
+                "dueOn", today.toString())).andExpect(status().isCreated());
+        long paid = body(postAs(me, "/api/debts", Map.of("direction", "I_OWE", "person", "Mei", "amount", "20.00",
+                "dueOn", today.toString()))).get("id").asLong();
+        postAs(me, "/api/debts/" + paid + "/settle", Map.of()).andExpect(status().isOk());
+
+        reminders.run(morning);
+        reminders.run(morning.plusMinutes(5));
+
+        assertThat(pushes.sentTo(phone)).filteredOn(s -> s.payload().contains("Ali's RM 50.00 is due today"))
+                .hasSize(1);
+        assertThat(pushes.sentTo(phone)).noneMatch(s -> s.payload().contains("Mei"));
     }
 }

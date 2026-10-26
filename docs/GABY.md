@@ -45,7 +45,7 @@ sequenceDiagram
     participant T as Tools
     participant SV as Services
 
-    U->>B: "Ali bayar balik 50 tadi"
+    U->>B: "Ali dah bayar balik duit dia"
     B->>C: POST chat + last 12 turns
     C->>G: take one from today's allowance
     alt over the limit
@@ -54,10 +54,10 @@ sequenceDiagram
     C->>S: chat as this user
     loop up to 8 rounds, until the model answers in words
         S->>M: prompt, history, 29 tools
-        M-->>S: call record_debt_payment
+        M-->>S: call settle_debt
         S->>T: run as this user
-        T->>SV: debts.pay(Ali, 50)
-        SV-->>T: DebtView · outstanding 70
+        T->>SV: debts.settle(Ali)
+        SV-->>T: DebtView · settled today
         T-->>S: tool result (or a readable error)
     end
     M-->>S: reply + TRANSLATION line
@@ -66,8 +66,8 @@ sequenceDiagram
     B-->>U: rojak reply + English subtitle
 ```
 
-The reply in that example: *"Baik tuan hamba, Ali dah bayar RM50, tinggal RM70 lagi."* with the
-subtitle *"Ali paid back RM 50; RM 70 is still owed."*
+The reply in that example: *"Baik tuan hamba, hutang Ali dah selesai, saya tandakan."* with the
+subtitle *"Ali's debt is settled; I've ticked it off."*
 
 - **Stateless.** The server keeps no conversation. The browser sends the last few turns
   (`history-turns`, 12) with each message, so a redeploy or a second tab never loses or
@@ -89,7 +89,7 @@ subtitle *"Ali paid back RM 50; RM 70 is still owed."*
 | Money | `list_accounts`, `list_categories`, `list_entries`, `add_entry`, `delete_entry` |
 | Budgets | `get_budgets`, `set_budget` |
 | Recurring | `list_recurring`, `add_recurring` (with `auto` true/false), `confirm_recurring` (confirm, change the amount, or `skip`) |
-| Debts | `list_debts`, `add_debt`, `record_debt_payment` (by person's name; the oldest open debt if several) |
+| Debts | `list_debts`, `add_debt`, `settle_debt` (by person's name; the oldest open debt if several) |
 | Quests | `list_quests`, `add_quest`, `contribute_to_quest` |
 | Calendar | `list_events`, `add_event`, `delete_event` |
 | Meals | `get_meals`, `add_meal` (estimates calories if not given), `set_calorie_goal` |

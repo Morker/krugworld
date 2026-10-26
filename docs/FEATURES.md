@@ -214,13 +214,14 @@ A memory of money between you and other people, kept apart from the ledger (it's
 who owes whom, not money in an account).
 
 - **Owed to you** and **You owe** columns, each debt with the person, what it was for,
-  a repaid bar, and a due date (red when overdue).
-- **They paid / I paid** records a repayment, in parts if needed. Paying the last of it
-  settles the debt: +10 XP the first time and the *Clean slate* badge.
-- **Let the rest go** settles it without the rest being paid (forgiven, written off).
-  It can be opened again.
-- Repayments recorded by mistake can be removed; a debt that's owed again reopens.
-- Settled debts move to a collapsible *Settled* list.
+  the amount and a due date (red when overdue). No partial repayments: a debt is either
+  still owed or settled.
+- **Tick it off** when it's settled (paid back, forgiven, whatever): +10 XP the first
+  time and the *Clean slate* badge. It moves to a collapsible *Settled* list, where
+  **unticking** opens it again. Unticking and re-ticking can't earn the XP twice.
+- **Reminders** (phone notifications, once each, between 9 am and 10 pm): the day before
+  it's due, on the day, then once a week while it's overdue. A debt with no due date gets
+  a nudge every 30 days. Ticking it off stops them.
 
 ```mermaid
 stateDiagram-v2
@@ -229,27 +230,27 @@ stateDiagram-v2
         [*] --> Open
         Open --> Overdue: due date passes
     }
-    note right of Owing: Partial repayments keep it here
-    Owing --> Cleared: last of it repaid, +10 XP once
-    Owing --> LetGo: Let the rest go
-    Cleared --> Owing: remove a repayment
-    LetGo --> Owing: Open it again
-    Cleared: Settled · repaid in full
-    LetGo: Settled · rest let go
-    Cleared --> [*]: delete
-    LetGo --> [*]: delete
+    Owing --> Settled: tick · +10 XP the first time
+    Settled --> Owing: untick
+    Settled --> [*]: delete
 ```
 
 ```mermaid
 flowchart TD
-    pay(["They paid RM 50"]) --> chk{"settled already?"}
-    chk -- yes --> c409["409 already_settled"]
-    chk -- no --> more{"more than<br/>outstanding?"}
-    more -- yes --> b400["400 more_than_owed<br/>'Only RM 70.00 is left'"]
-    more -- no --> save["save repayment"] --> zero{"outstanding = 0?"}
-    zero -- no --> open(["still open · bar fills"])
-    zero -- yes --> settle["settled_on = paid on"] --> xp(["DebtCleared → +10 XP<br/>Clean slate badge"])
+    job(["ReminderJob · every 5 min"]) --> hrs{"9 am to 10 pm?"}
+    hrs -- no --> quiet(["nothing"])
+    hrs -- yes --> each["each open debt"] --> due{"has a due date?"}
+    due -- yes --> when{"days until due"}
+    when -- "1" --> tom["DEBT_DUE_TOMORROW<br/>ref id:due"]
+    when -- "0" --> tod["DEBT_DUE_TODAY<br/>ref id:due"]
+    when -- "7+ late" --> od["DEBT_OVERDUE<br/>ref id:due:w(late / 7)"]
+    due -- no --> age{"30+ days old?"}
+    age -- yes --> und["DEBT_UNDATED<br/>ref id:start:m(age / 30)"]
+    tom & tod & od & und --> claim["INSERT notification_sent<br/>ON CONFLICT DO NOTHING"] --> send(["push, once"])
 ```
+
+The week and month buckets in the ref mean a nudge missed on its exact day (server
+down) still goes out on the next run, and moving the due date starts its reminders afresh.
 
 ### Accounts
 
@@ -314,7 +315,7 @@ kept in your browser only and never reaches KrugWorld's server.
 | Finish an idea | 15 | once per idea |
 | Keep a budget for a finished month | 50 | per budgeted category per month, up to a year back |
 | Complete a quest | 200 | once per quest |
-| Clear a debt in full | 10 | once per debt |
+| Tick off a debt | 10 | once per debt |
 
 Entries booked automatically by the nightly job earn nothing: XP is for things you did.
 Every reward is recorded once in `xp_event`, so nothing can be paid twice.
@@ -328,7 +329,7 @@ pie showData
     "Workouts (10 each)" : 40
     "Meal days (5 each)" : 35
     "Ideas finished (15 each)" : 15
-    "A debt cleared" : 10
+    "A debt ticked off" : 10
 ```
 
 ### Levels
@@ -394,5 +395,5 @@ stateDiagram-v2
 | First feast | Log a meal |
 | Iron body | Finish 10 workouts |
 | Idea smith | Finish an idea in the Workshop |
-| Clean slate | Have a debt paid back in full |
+| Clean slate | Tick off a settled debt |
 | Adept | Reach level 5 |

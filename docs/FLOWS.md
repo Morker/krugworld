@@ -17,14 +17,14 @@ the Markdown (in VS Code, install a Mermaid preview extension).
 | Frontend writes and structure | flowcharts | [ARCHITECTURE](ARCHITECTURE.md#frontend) |
 | Schema history | timeline | [DATABASE](DATABASE.md#migrations) |
 | Every table | 4 ER diagrams: ledger · debts and quests · game and life · security | [DATABASE](DATABASE.md#entity-relationships) |
-| Derived numbers | flowchart: balance, outstanding, mana, level, streak | [DATABASE](DATABASE.md#how-derived-numbers-are-computed) |
+| Derived numbers | flowchart: balance, mana, level, streak | [DATABASE](DATABASE.md#how-derived-numbers-are-computed) |
 | App map | mind map | [FEATURES](FEATURES.md) |
 | A day in KrugWorld | user journey | [FEATURES](FEATURES.md#a-day-in-krugworld) |
 | The Hall's layout and breakpoints | block diagram + flowchart | [FEATURES](FEATURES.md#the-hall) |
 | Recurring entry lifecycle | state diagram | [FEATURES](FEATURES.md#recurring) |
 | Sealing a bill | sequence | [FEATURES](FEATURES.md#recurring) |
 | Quest lifecycle | state diagram | [FEATURES](FEATURES.md#quests) |
-| Debt lifecycle and repayment rules | state diagram + flowchart | [FEATURES](FEATURES.md#debts) |
+| Debt lifecycle and reminder rules | state diagram + flowchart | [FEATURES](FEATURES.md#debts) |
 | Where XP comes from | pie | [FEATURES](FEATURES.md#xp) |
 | Level curve | XY chart | [FEATURES](FEATURES.md#levels) |
 | Streak flame | state diagram | [FEATURES](FEATURES.md#streaks) |

@@ -2,6 +2,8 @@ package com.krugworld.push;
 
 import com.krugworld.budget.BudgetService.CategoryBudget;
 import com.krugworld.calendar.CalendarService.EventView;
+import com.krugworld.debt.Debt;
+import com.krugworld.debt.DebtService.DebtView;
 import com.krugworld.ledger.LedgerDtos.CategoryRef;
 import com.krugworld.life.LifeService.TodayWorkout;
 import org.junit.jupiter.api.Test;
@@ -20,13 +22,13 @@ class RemindersTest {
 
     private static Reminders.Day at(int hour, int minute) {
         return new Reminders.Day(TODAY.atTime(hour, minute), List.of(), List.of(), 0, true, List.of(),
-                0, 0, BigDecimal.ZERO);
+                0, 0, BigDecimal.ZERO, List.of());
     }
 
     private static Reminders.Day with(Reminders.Day d, List<EventView> events, List<TodayWorkout> workouts,
                                       int streak, boolean active, List<CategoryBudget> budgets) {
         return new Reminders.Day(d.now(), events, workouts, streak, active, budgets,
-                d.calories(), d.calorieGoal(), d.spentToday());
+                d.calories(), d.calorieGoal(), d.spentToday(), d.openDebts());
     }
 
     private static CategoryBudget budget(long id, String name, String total, String left) {
@@ -114,7 +116,7 @@ class RemindersTest {
     private static Reminders.Day eating(int hour, int calories, int goal, String spent) {
         Reminders.Day d = at(hour, 30);
         return new Reminders.Day(d.now(), List.of(), List.of(), 0, true, List.of(), calories, goal,
-                new BigDecimal(spent));
+                new BigDecimal(spent), List.of());
     }
 
     @Test
@@ -147,5 +149,86 @@ class RemindersTest {
         });
         assertThat(Reminders.due(eating(23, 0, 0, "0"))).singleElement()
                 .satisfies(r -> assertThat(r.body()).startsWith("Nothing logged as spent today."));
+    }
+
+    private static Reminders.Day owing(int hour, DebtView... debts) {
+        Reminders.Day d = at(hour, 0);
+        return new Reminders.Day(d.now(), List.of(), List.of(), 0, true, List.of(), 0, 0, BigDecimal.ZERO,
+                List.of(debts));
+    }
+
+    private static DebtView debt(long id, Debt.Direction direction, String person, String note,
+                                 LocalDate startedOn, LocalDate dueOn) {
+        return new DebtView(id, direction, person, new BigDecimal("50.00"), note, startedOn, dueOn, null,
+                dueOn != null && dueOn.isBefore(TODAY));
+    }
+
+    @Test
+    void aDebtIsNudgedTheDayBeforeAndOnTheDayItsDue() {
+        DebtView ali = debt(7, Debt.Direction.THEY_OWE, "Ali", "Lunch at the mamak", TODAY.minusDays(3), TODAY.plusDays(1));
+        assertThat(Reminders.due(owing(10, ali))).singleElement().satisfies(r -> {
+            assertThat(r.kind()).isEqualTo("DEBT_DUE_TOMORROW");
+            assertThat(r.ref()).isEqualTo("7:2026-10-23");
+            assertThat(r.title()).isEqualTo("Ali's RM 50.00 is due tomorrow");
+            assertThat(r.body()).isEqualTo("Lunch at the mamak. A gentle word to Ali wouldn't hurt.");
+            assertThat(r.url()).isEqualTo("/debts");
+        });
+
+        DebtView landlord = debt(8, Debt.Direction.I_OWE, "Landlord", "", TODAY.minusDays(3), TODAY);
+        assertThat(Reminders.due(owing(10, landlord))).singleElement().satisfies(r -> {
+            assertThat(r.kind()).isEqualTo("DEBT_DUE_TODAY");
+            assertThat(r.ref()).isEqualTo("8:2026-10-22");
+            assertThat(r.title()).isEqualTo("Pay Landlord RM 50.00 today");
+            assertThat(r.body()).isEqualTo("Tick it off once it's paid.");
+        });
+    }
+
+    @Test
+    void anOverdueDebtIsNudgedOnceAWeek() {
+        // Overdue but not a week yet: the due-day nudge was enough.
+        assertThat(Reminders.due(owing(10, debt(3, Debt.Direction.I_OWE, "Mei", "Concert ticket.",
+                TODAY.minusDays(20), TODAY.minusDays(6))))).isEmpty();
+
+        DebtView mei = debt(3, Debt.Direction.I_OWE, "Mei", "Concert ticket.", TODAY.minusDays(20), TODAY.minusDays(9));
+        assertThat(Reminders.due(owing(10, mei))).singleElement().satisfies(r -> {
+            assertThat(r.kind()).isEqualTo("DEBT_OVERDUE");
+            // Days 7 to 13 late share "w1", so the job sends it once that week.
+            assertThat(r.ref()).isEqualTo("3:2026-10-13:w1");
+            assertThat(r.title()).isEqualTo("Thy debt to Mei is 9 days overdue");
+            assertThat(r.body()).isEqualTo("Concert ticket. RM 50.00, due 13 Oct. Settle it and tick it off.");
+        });
+        DebtView later = debt(3, Debt.Direction.THEY_OWE, "Mei", "", TODAY.minusDays(20), TODAY.minusDays(14));
+        assertThat(Reminders.due(owing(10, later))).singleElement().satisfies(r -> {
+            assertThat(r.ref()).isEqualTo("3:2026-10-08:w2");
+            assertThat(r.title()).isEqualTo("Mei is 14 days late with RM 50.00");
+        });
+    }
+
+    @Test
+    void anUndatedDebtIsNudgedEveryThirtyDays() {
+        assertThat(Reminders.due(owing(10, debt(5, Debt.Direction.THEY_OWE, "Ravi", "", TODAY.minusDays(29), null))))
+                .isEmpty();
+        DebtView ravi = debt(5, Debt.Direction.THEY_OWE, "Ravi", "", TODAY.minusDays(30), null);
+        assertThat(Reminders.due(owing(10, ravi))).singleElement().satisfies(r -> {
+            assertThat(r.kind()).isEqualTo("DEBT_UNDATED");
+            assertThat(r.ref()).isEqualTo("5:2026-09-22:m1");
+            assertThat(r.title()).isEqualTo("Ravi has owed you RM 50.00 for 30 days");
+            assertThat(r.body()).isEqualTo("No due date was set. Perhaps ask kindly?");
+        });
+        DebtView mine = debt(6, Debt.Direction.I_OWE, "Siti", "", TODAY.minusDays(65), null);
+        assertThat(Reminders.due(owing(10, mine))).singleElement()
+                .satisfies(r -> assertThat(r.ref()).isEqualTo("6:2026-08-18:m2"));
+    }
+
+    @Test
+    void debtNudgesWaitForWakingHoursAndFarOffOnesStayQuiet() {
+        DebtView dueToday = debt(1, Debt.Direction.THEY_OWE, "Ali", "", TODAY.minusDays(3), TODAY);
+        assertThat(Reminders.due(owing(8, dueToday))).isEmpty();
+        assertThat(Reminders.due(owing(22, dueToday))).extracting(Reminders.Reminder::kind)
+                .doesNotContain("DEBT_DUE_TODAY");
+        assertThat(Reminders.due(owing(9, dueToday))).hasSize(1);
+
+        DebtView farOff = debt(2, Debt.Direction.THEY_OWE, "Ali", "", TODAY.minusDays(3), TODAY.plusDays(5));
+        assertThat(Reminders.due(owing(10, farOff))).isEmpty();
     }
 }

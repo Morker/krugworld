@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
+import { today } from '../lib/format'
 import type {
   Account,
   Category,
@@ -342,7 +343,7 @@ export type DebtInput = {
   dueOn: string | null
 }
 
-// Clearing a debt can earn XP and a badge, so the Hall refreshes too.
+// Ticking a debt off can earn XP and a badge, so the Hall refreshes too.
 function useInvalidateDebts() {
   const qc = useQueryClient()
   return () =>
@@ -368,31 +369,22 @@ export function useDeleteDebt() {
   })
 }
 
-export function usePayDebt() {
+/** Tick a debt off as settled, or untick it. Shown at once, rolled back if the server says no. */
+export function useTickDebt() {
+  const qc = useQueryClient()
   const invalidate = useInvalidateDebts()
   return useMutation({
-    mutationFn: ({ id, ...body }: { id: number; amount: string; paidOn: string; note: string }) =>
-      api<Debt>(`/api/debts/${id}/payments`, { method: 'POST', json: body }),
-    onSuccess: invalidate,
-  })
-}
-
-export function useDeleteDebtPayment() {
-  const invalidate = useInvalidateDebts()
-  return useMutation({
-    mutationFn: ({ id, paymentId }: { id: number; paymentId: number }) =>
-      api<Debt>(`/api/debts/${id}/payments/${paymentId}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
-  })
-}
-
-/** settle: let the rest go. reopen: undo that. */
-export function useSettleDebt() {
-  const invalidate = useInvalidateDebts()
-  return useMutation({
-    mutationFn: ({ id, reopen }: { id: number; reopen?: boolean }) =>
-      api<Debt>(`/api/debts/${id}/${reopen ? 'reopen' : 'settle'}`, { method: 'POST' }),
-    onSuccess: invalidate,
+    mutationFn: ({ id, settled }: { id: number; settled: boolean }) =>
+      api<Debt>(`/api/debts/${id}/${settled ? 'settle' : 'reopen'}`, { method: 'POST' }),
+    onMutate: async ({ id, settled }) => {
+      await qc.cancelQueries({ queryKey: ['debts'] })
+      const before = qc.getQueriesData<Debt[]>({ queryKey: ['debts'] })
+      qc.setQueriesData<Debt[]>({ queryKey: ['debts'] }, (old) =>
+        old?.map((d) => (d.id === id ? { ...d, settledOn: settled ? today() : null } : d)))
+      return { before }
+    },
+    onError: (_error, _vars, ctx) => ctx?.before.forEach(([key, data]) => qc.setQueryData(key, data)),
+    onSettled: invalidate,
   })
 }
 

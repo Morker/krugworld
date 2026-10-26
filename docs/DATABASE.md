@@ -33,6 +33,7 @@ what Flyway built and refuses to start if they don't.
 | 10 | `V10__push.sql` | push notifications (`push_subscription`). **Deployed from the other PC, not yet in this repo**; document it here when that code is merged. |
 | 11 | `V11__recurring_confirm.sql` | `recurring_rule.auto_post` |
 | 12 | `V12__debts.sql` | `debt`, `debt_payment` |
+| 13 | `V13__simple_debts.sql` | drops `debt_payment`: debts are ticked off, not repaid in parts |
 
 Every table that belongs to a person has `user_id … REFERENCES app_user (id) ON DELETE
 CASCADE`, so deleting an account removes everything it owned.
@@ -42,7 +43,7 @@ timeline
     title Schema history
     2026-10-13 : V1 baseline : V2 users : V3 ledger : V4 recurring : V5 quests and XP : V6 life : V7 steward usage : V8 devices
     2026-10-22 : V9 password reset : V10 push (other PC)
-    next release : V11 recurring confirm : V12 debts
+    next release : V11 recurring confirm : V12 debts : V13 simple debts
 ```
 
 ## Entity relationships
@@ -108,7 +109,6 @@ erDiagram
 ```mermaid
 erDiagram
     app_user ||--o{ debt : remembers
-    debt ||--o{ debt_payment : "repaid by"
     app_user ||--o{ goal : pursues
     app_user {
         bigint id PK
@@ -129,12 +129,6 @@ erDiagram
         date started_on
         date due_on
         date settled_on
-    }
-    debt_payment {
-        bigint id PK
-        bigint debt_id FK
-        numeric amount
-        date paid_on
     }
     goal {
         bigint id PK
@@ -240,9 +234,6 @@ flowchart LR
     tin["+ TRANSFER in"] --> bal
     bal --> gold(["Gold = Σ balances"])
 
-    damt["debt.amount"] --> out(["Outstanding"])
-    pays["− Σ debt_payment.amount"] --> out
-
     bud["category.monthly_budget"] --> left(["Mana left"])
     spent["− this month's EXPENSE<br/>in that category"] --> left
 
@@ -327,7 +318,7 @@ one entry per rule per date, whoever books it.
 **`goal`**: savings quests: `target_amount`, `saved_amount`, optional `deadline`,
 `completed_at` (set once, never unset).
 
-**`debt`** / **`debt_payment`**: promises between the user and other people.
+**`debt`**: promises between the user and other people.
 
 | `debt` column | Notes |
 |---|---|
@@ -335,10 +326,12 @@ one entry per rule per date, whoever books it.
 | `person` | free text, e.g. "Ali" |
 | `amount` | the original amount, > 0 |
 | `note`, `started_on`, `due_on` | `due_on` optional |
-| `settled_on` | set when repaid in full or when the user lets the rest go |
+| `settled_on` | the day it was ticked off as settled; `null` while still owed |
 
-`debt_payment` holds repayments (`amount > 0`, `paid_on`, `note`), cascading with the
-debt. **Outstanding** = `amount − SUM(debt_payment.amount)`, computed in SQL. Debts are
+V12 also made `debt_payment` for partial repayments; V13 dropped it again (debts are now
+simply ticked off), without editing V12, since migrations only move forward. Before
+dropping it, V13 folds partial repayments into open debts: the amount becomes what was
+still owed, and the note keeps "was RM 120.00, RM 50.00 paid back". Debts are
 kept apart from the ledger on purpose: they record who owes whom, not money in an
 account.
 
@@ -386,11 +379,11 @@ LEFT JOIN ledger_entry e ON e.account_id = a.id OR e.to_account_id = a.id
 WHERE a.user_id = :user
 GROUP BY a.id;
 
--- Open debts with what's still owed
-SELECT d.person, d.direction, d.amount - COALESCE(SUM(p.amount), 0) AS outstanding
-FROM debt d LEFT JOIN debt_payment p ON p.debt_id = d.id
+-- What's owed each way, open debts only
+SELECT d.direction, SUM(d.amount) AS total
+FROM debt d
 WHERE d.user_id = :user AND d.settled_on IS NULL
-GROUP BY d.id;
+GROUP BY d.direction;
 ```
 
 ## Backups

@@ -97,20 +97,17 @@ export type Rule = {
 }
 
 export type DebtDirection = 'THEY_OWE' | 'I_OWE'
-export type DebtPayment = { id: number; amount: number; paidOn: string; note: string }
 export type Debt = {
   id: number
   direction: DebtDirection
   person: string
   amount: number
-  repaid: number
-  outstanding: number
   note: string
   startedOn: string
   dueOn: string | null
+  /** Set once ticked off; null while still owed. */
   settledOn: string | null
   overdue: boolean
-  payments: DebtPayment[]
 }
 
 export type Quest = {

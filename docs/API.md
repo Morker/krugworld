@@ -186,12 +186,10 @@ A budget is set through the category's `monthlyBudget`.
 |---|---|---|---|
 | GET | `/api/debts` | | `DebtView[]`: open first (soonest due on top), then settled (latest first) |
 | POST | `/api/debts` | `DebtRequest` | `201 DebtView` |
-| PUT | `/api/debts/{id}` | `DebtRequest` | `DebtView`. `400 amount_below_repaid` |
-| DELETE | `/api/debts/{id}` | | `204` (repayments go with it) |
-| POST | `/api/debts/{id}/payments` | `{amount, paidOn?, note?}` | `201 DebtView`; paying the rest settles it, +10 XP once |
-| DELETE | `/api/debts/{id}/payments/{paymentId}` | | `DebtView`; reopens it if something is owed again |
-| POST | `/api/debts/{id}/settle` | | `DebtView`; lets the rest go (no XP) |
-| POST | `/api/debts/{id}/reopen` | | `DebtView`. `409 fully_repaid` |
+| PUT | `/api/debts/{id}` | `DebtRequest` | `DebtView` |
+| DELETE | `/api/debts/{id}` | | `204` |
+| POST | `/api/debts/{id}/settle` | | `DebtView`; tick it off, +10 XP the first time (a second tick changes nothing) |
+| POST | `/api/debts/{id}/reopen` | | `DebtView`; untick, it's owed again |
 
 ```json
 // DebtRequest
@@ -200,17 +198,14 @@ A budget is set through the category's `monthlyBudget`.
 
 // DebtView
 { "id": 2, "direction": "THEY_OWE", "person": "Ali", "amount": 120.00,
-  "repaid": 50.00, "outstanding": 70.00, "note": "Concert ticket",
-  "startedOn": "2026-10-10", "dueOn": "2026-10-27", "settledOn": null, "overdue": false,
-  "payments": [ { "id": 5, "amount": 50.00, "paidOn": "2026-10-20", "note": "" } ] }
+  "note": "Concert ticket", "startedOn": "2026-10-10", "dueOn": "2026-10-27",
+  "settledOn": null, "overdue": false }
 ```
 
 - `direction`: `THEY_OWE` (someone owes the user) or `I_OWE`.
 - `startedOn` defaults to today; `dueOn` is optional and can't be before it
   (`due_before_start`).
-- A repayment can't exceed what's outstanding (`400 more_than_owed`) or be added to a
-  settled debt (`409 already_settled`).
-- `outstanding` is `0` once settled; `amount − repaid` on a settled debt is what was let go.
+- `settledOn` is the day it was ticked off; `null` while still owed.
 
 ## Quests (savings goals)
 

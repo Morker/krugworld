@@ -66,7 +66,7 @@ service, entities and repositories:
 | `ledger` | Accounts, categories, ledger entries, month summaries |
 | `budget` | Monthly budgets per expense category ("mana") |
 | `recurring` | Monthly recurring entries, the nightly job, confirm/skip |
-| `debt` | Debts between the user and other people, repayments |
+| `debt` | Debts between the user and other people, ticked off when settled |
 | `quest` | Savings goals ("quests") |
 | `game` | XP log, levels, badges, streaks, the character sheet |
 | `calendar` | Calendar events |
@@ -149,14 +149,13 @@ flowchart LR
 - **Request/response shapes** are Java records next to the service
   (`DebtService.DebtRequest`, `DebtService.DebtView`). Entities never leave the service.
 - **JPA** handles single-row writes; **JdbcTemplate** handles aggregates (balances,
-  totals by category, repaid amounts), where plain SQL is clearer and faster than
+  totals by category, streaks), where plain SQL is clearer and faster than
   loading entities.
 - **Money** is `NUMERIC(14,2)` in the database and `BigDecimal` in Java. The frontend
   sends amounts as two-decimal strings, so no floating-point rounding reaches the
   database.
 - **Derived numbers are never stored.** Account balances are opening balance plus
-  entries; a debt's outstanding amount is the amount minus repayments. Both are
-  summed in SQL on read, so they can't drift from the history.
+  entries, summed in SQL on read, so they can't drift from the history.
 - **Errors** are always `{ "code", "message", "fields"? }` (`ApiExceptionHandler`).
   Services throw `ApiException.badRequest / notFound / conflict`; the frontend switches
   on `code` and shows `message`.
@@ -190,7 +189,7 @@ flowchart TD
 | `WorkoutDone` | A workout is ticked | +10 XP, once per workout per day |
 | `IdeaFinished` | An idea reaches DONE | +15 XP, once per idea |
 | `QuestCompleted` | A quest reaches its target | +200 XP, once per quest |
-| `DebtCleared` | A debt is repaid in full | +10 XP, once per debt |
+| `DebtCleared` | A debt is ticked off as settled | +10 XP, once per debt |
 | `UserRegistered` | An account is created | default account and categories (`LedgerSetup`) |
 
 Every reward is an `INSERT … ON CONFLICT DO NOTHING` into `xp_event`, whose unique key

@@ -242,7 +242,7 @@ public class StewardTools {
 
         t.add(new StewardTool("list_debts",
                 "Debts between the user and other people: who owes the user (THEY_OWE) and whom the user owes "
-                        + "(I_OWE), how much is still outstanding, due dates and repayments. Open ones first.",
+                        + "(I_OWE), how much, due dates, and which are settled. Open ones first.",
                 object(props()),
                 (uid, in) -> debts.list(uid)));
 
@@ -260,22 +260,22 @@ public class StewardTools {
                         money(in, "amount"), opt(in, "note"), null,
                         in.get("due_on") == null ? null : LocalDate.parse(str(in, "due_on"))))));
 
-        t.add(new StewardTool("record_debt_payment",
-                "Record money paid back on an open debt with that person (the oldest one if there are several). "
-                        + "Paying the rest settles it.",
-                object(props("person", string("Who"), "amount", number("RM paid back"),
+        t.add(new StewardTool("settle_debt",
+                "Tick off an open debt with that person as settled (paid back, or no longer owed). "
+                        + "The oldest one if there are several.",
+                object(props("person", string("Who"),
                         "direction", stringEnum("Which way, if the user both owes and is owed by this person",
                                 "they_owe", "i_owe")),
-                        "person", "amount"),
+                        "person"),
                 (uid, in) -> {
                     String person = str(in, "person");
                     String direction = in.get("direction") == null ? null : str(in, "direction").toUpperCase();
-                    DebtService.DebtView debt = debts.list(uid).stream()
-                            .filter(d -> d.settledOn() == null && d.person().equalsIgnoreCase(person)
+                    DebtService.DebtView debt = debts.open(uid).stream()
+                            .filter(d -> d.person().equalsIgnoreCase(person)
                                     && (direction == null || d.direction().name().equals(direction)))
                             .min(Comparator.comparing(DebtService.DebtView::startedOn))
                             .orElseThrow(() -> new StewardException("No open debt with '" + person + "'."));
-                    return debts.pay(uid, debt.id(), new DebtService.PaymentRequest(money(in, "amount"), null, ""));
+                    return debts.settle(uid, debt.id());
                 }));
 
         // ---------------- calendar ----------------

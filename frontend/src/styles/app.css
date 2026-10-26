@@ -392,6 +392,8 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
 }
 .debt-card .title { font-weight: 600; }
 .debt-card.overdue { border-color: var(--hp); }
+.debt-tick { flex: none; padding: 4px; }
+.debt-tick:hover svg { color: var(--ok); }
 details.settled summary { cursor: pointer; list-style-position: inside; }
 
 /* ---------- calendar ---------- */

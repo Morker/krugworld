@@ -20,7 +20,7 @@ Release only code that is pushed to GitHub, and number new migrations above prod
 ## Stack and layout
 
 - `backend/` — Spring Boot 3.3 (Java 17), Spring Data JPA + JdbcTemplate for aggregates,
-  Spring Security, Flyway (`db/migration/V1..V12`), Testcontainers 1.21.4 (pinned: older
+  Spring Security, Flyway (`db/migration/V1..V13`), Testcontainers 1.21.4 (pinned: older
   versions fail against Docker 29).
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
@@ -57,9 +57,11 @@ Release only code that is pushed to GitHub, and number new migrations above prod
 - Recurring rules have `auto_post` (V11): true books itself nightly; false waits ("awaiting your
   seal") until the user confirms (`POST /api/recurring/{id}/confirm {on, amount?}`, earns entry XP)
   or skips it. `on` must equal `next_run_on` and the row is locked, so a double tap gets 409.
-- Debts (V12, `debt` package): `debt` + `debt_payment`; outstanding = amount − repayments, summed in
-  SQL. Paying the last of it settles it (+10 XP once, "Clean slate" badge); "let the rest go"
-  settles without XP. Gaby has `list_debts` / `add_debt` / `record_debt_payment`.
+- Debts (V12 + V13, `debt` package): one `debt` row each way (`THEY_OWE` / `I_OWE`), no partial
+  repayments (V13 dropped `debt_payment`). Ticking it off (`POST /api/debts/{id}/settle`) sets
+  `settled_on`, +10 XP once ("Clean slate"); `/reopen` unticks. Gaby has `list_debts` / `add_debt` /
+  `settle_debt`. Push reminders in `Reminders.debts`: day before due, on the day, weekly when 7+ days
+  overdue, every 30 days if undated; 9 am-10 pm only.
 - Tests: `IntegrationTest` base boots the app against Testcontainers Postgres with the
   scheduler off and the Steward on a scripted `FakeChatProvider` (no network, no cost).
 

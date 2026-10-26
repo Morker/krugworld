@@ -174,8 +174,8 @@ export function DebtsPanel() {
   const debts = useDebts()
   if (!debts.data) return <Panel title="Debts"><span className="small muted">Counting IOUs…</span></Panel>
   const open = debts.data.filter((d) => !d.settledOn)
-  const owed = open.filter((d) => d.direction === 'THEY_OWE').reduce((s, d) => s + d.outstanding, 0)
-  const owe = open.filter((d) => d.direction === 'I_OWE').reduce((s, d) => s + d.outstanding, 0)
+  const owed = open.filter((d) => d.direction === 'THEY_OWE').reduce((s, d) => s + d.amount, 0)
+  const owe = open.filter((d) => d.direction === 'I_OWE').reduce((s, d) => s + d.amount, 0)
   // Overdue first, then whatever falls due soonest.
   const top = [...open].sort((a, b) => Number(b.overdue) - Number(a.overdue)
     || (a.dueOn ?? '9999').localeCompare(b.dueOn ?? '9999')).slice(0, 3)
@@ -209,7 +209,7 @@ export function DebtsPanel() {
                     <IconCalendarDue size={13} aria-hidden="true" /> {d.overdue ? 'overdue' : relativeDay(d.dueOn)}
                   </span>
                 )}
-                <Money value={d.outstanding} className={d.direction === 'THEY_OWE' ? 'pos' : 'neg'} />
+                <Money value={d.amount} className={d.direction === 'THEY_OWE' ? 'pos' : 'neg'} />
               </div>
             ))}
           </div>

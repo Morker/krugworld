@@ -18,64 +18,35 @@ class DebtIntegrationTest extends IntegrationTest {
     @Autowired Clock clock;
 
     @Test
-    void repaymentsCountDownAndTheLastOneSettlesTheDebtForXp() throws Exception {
+    void tickingADebtSettlesItForXpOnlyOnce() throws Exception {
         CurrentUser me = newUser();
         long id = lend(me, "Ali", "120.00");
+        getAs(me, "/api/debts").andExpect(jsonPath("$[0].settledOn").doesNotExist());
 
-        postAs(me, "/api/debts/" + id + "/payments", Map.of("amount", "50.00"))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.repaid").value(50.00))
-                .andExpect(jsonPath("$.outstanding").value(70.00))
-                .andExpect(jsonPath("$.settledOn").doesNotExist());
-        getAs(me, "/api/character").andExpect(jsonPath("$.xp").value(0));
-
-        postAs(me, "/api/debts/" + id + "/payments", Map.of("amount", "70.00"))
-                .andExpect(jsonPath("$.outstanding").value(0))
-                .andExpect(jsonPath("$.settledOn").value(LocalDate.now(clock).toString()))
-                .andExpect(jsonPath("$.payments.length()").value(2));
+        postAs(me, "/api/debts/" + id + "/settle", Map.of())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.settledOn").value(LocalDate.now(clock).toString()));
         getAs(me, "/api/character")
                 .andExpect(jsonPath("$.xp").value(DebtService.DEBT_CLEARED_XP))
                 .andExpect(jsonPath("$.badges[?(@.id == 'clean_slate')].earned").value(true));
 
-        // Settled: nothing more can be paid on it.
-        postAs(me, "/api/debts/" + id + "/payments", Map.of("amount", "1.00"))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("already_settled"));
+        // A double tap, or untick and tick again, can't farm the XP.
+        postAs(me, "/api/debts/" + id + "/settle", Map.of()).andExpect(status().isOk());
+        postAs(me, "/api/debts/" + id + "/reopen", Map.of()).andExpect(jsonPath("$.settledOn").doesNotExist());
+        postAs(me, "/api/debts/" + id + "/settle", Map.of()).andExpect(status().isOk());
+        getAs(me, "/api/character").andExpect(jsonPath("$.xp").value(DebtService.DEBT_CLEARED_XP));
     }
 
     @Test
-    void cantPayBackMoreThanIsStillOwed() throws Exception {
-        CurrentUser me = newUser();
-        long id = lend(me, "Mei", "30.00");
-        postAs(me, "/api/debts/" + id + "/payments", Map.of("amount", "30.01"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("more_than_owed"));
-    }
-
-    @Test
-    void removingARepaymentOpensTheDebtAgain() throws Exception {
-        CurrentUser me = newUser();
-        long id = lend(me, "Ravi", "40.00");
-        long paymentId = body(postAs(me, "/api/debts/" + id + "/payments", Map.of("amount", "40.00")))
-                .get("payments").get(0).get("id").asLong();
-
-        deleteAs(me, "/api/debts/" + id + "/payments/" + paymentId)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.outstanding").value(40.00))
-                .andExpect(jsonPath("$.settledOn").doesNotExist());
-    }
-
-    @Test
-    void lettingItGoSettlesWithoutXpAndCanBeUndone() throws Exception {
+    void untickingOpensItAgain() throws Exception {
         CurrentUser me = newUser();
         long id = lend(me, "Siti", "25.00");
-        postAs(me, "/api/debts/" + id + "/settle", Map.of())
-                .andExpect(jsonPath("$.settledOn").value(LocalDate.now(clock).toString()));
-        getAs(me, "/api/character").andExpect(jsonPath("$.xp").value(0));
+        postAs(me, "/api/debts/" + id + "/settle", Map.of());
 
         postAs(me, "/api/debts/" + id + "/reopen", Map.of())
                 .andExpect(jsonPath("$.settledOn").doesNotExist())
-                .andExpect(jsonPath("$.outstanding").value(25.00));
+                .andExpect(jsonPath("$.amount").value(25.00));
+        getAs(me, "/api/debts").andExpect(jsonPath("$[0].settledOn").doesNotExist());
     }
 
     @Test
@@ -96,7 +67,30 @@ class DebtIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].person").value("Landlord"))
                 .andExpect(jsonPath("$[0].overdue").value(true))
                 .andExpect(jsonPath("$[1].person").value("Later"))
-                .andExpect(jsonPath("$[2].person").value("Old friend"));
+                .andExpect(jsonPath("$[2].person").value("Old friend"))
+                .andExpect(jsonPath("$[2].overdue").value(false));
+    }
+
+    @Test
+    void editingKeepsItsShapeAndRejectsADueDateBeforeTheStart() throws Exception {
+        CurrentUser me = newUser();
+        LocalDate today = LocalDate.now(clock);
+        long id = lend(me, "Ali", "100.00");
+
+        Map<String, Object> edit = debt("I_OWE", "  Ali  ", "80.50");
+        edit.put("note", "Petrol");
+        putAs(me, "/api/debts/" + id, edit)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.direction").value("I_OWE"))
+                .andExpect(jsonPath("$.person").value("Ali"))
+                .andExpect(jsonPath("$.amount").value(80.50))
+                .andExpect(jsonPath("$.note").value("Petrol"))
+                .andExpect(jsonPath("$.startedOn").value(today.toString()));
+
+        edit.put("dueOn", today.minusDays(1).toString());
+        putAs(me, "/api/debts/" + id, edit)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("due_before_start"));
     }
 
     @Test
@@ -104,19 +98,10 @@ class DebtIntegrationTest extends IntegrationTest {
         CurrentUser owner = newUser();
         CurrentUser stranger = newUser();
         long id = lend(owner, "Ali", "10.00");
-        postAs(stranger, "/api/debts/" + id + "/payments", Map.of("amount", "5.00"))
-                .andExpect(status().isNotFound());
+        postAs(stranger, "/api/debts/" + id + "/settle", Map.of()).andExpect(status().isNotFound());
+        putAs(stranger, "/api/debts/" + id, debt("THEY_OWE", "Ali", "1.00")).andExpect(status().isNotFound());
         deleteAs(stranger, "/api/debts/" + id).andExpect(status().isNotFound());
-    }
-
-    @Test
-    void theAmountCantDropBelowWhatWasRepaid() throws Exception {
-        CurrentUser me = newUser();
-        long id = lend(me, "Ali", "100.00");
-        postAs(me, "/api/debts/" + id + "/payments", Map.of("amount", "60.00"));
-        putAs(me, "/api/debts/" + id, debt("THEY_OWE", "Ali", "50.00"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("amount_below_repaid"));
+        getAs(owner, "/api/debts").andExpect(jsonPath("$.length()").value(1));
     }
 
     /* ---------------- helpers ---------------- */

@@ -3,7 +3,6 @@ package com.krugworld.debt;
 import com.krugworld.auth.CurrentUser;
 import com.krugworld.debt.DebtService.DebtRequest;
 import com.krugworld.debt.DebtService.DebtView;
-import com.krugworld.debt.DebtService.PaymentRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -52,25 +51,13 @@ public class DebtController {
         debts.delete(me.id(), id);
     }
 
-    @PostMapping("/{id}/payments")
-    @ResponseStatus(HttpStatus.CREATED)
-    public DebtView pay(@AuthenticationPrincipal CurrentUser me, @PathVariable Long id,
-                        @Valid @RequestBody PaymentRequest body) {
-        return debts.pay(me.id(), id, body);
-    }
-
-    @DeleteMapping("/{id}/payments/{paymentId}")
-    public DebtView deletePayment(@AuthenticationPrincipal CurrentUser me, @PathVariable Long id,
-                                  @PathVariable Long paymentId) {
-        return debts.deletePayment(me.id(), id, paymentId);
-    }
-
-    /** Let whatever is left go. */
+    /** Tick it off as settled (+XP the first time). */
     @PostMapping("/{id}/settle")
     public DebtView settle(@AuthenticationPrincipal CurrentUser me, @PathVariable Long id) {
         return debts.settle(me.id(), id);
     }
 
+    /** Untick: owed again. */
     @PostMapping("/{id}/reopen")
     public DebtView reopen(@AuthenticationPrincipal CurrentUser me, @PathVariable Long id) {
         return debts.reopen(me.id(), id);

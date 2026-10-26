@@ -13,7 +13,7 @@ budgets are mana, savings goals are quests, and everything you do earns XP.
 - **Recurring entries** (salary, rent, subscriptions) booked by a nightly
   job that catches up after downtime and can't double-book a date, or held
   for you to confirm (and correct the amount) when the bill varies.
-- **Debts**: who owes you and whom you owe, repaid in parts, with due dates.
+- **Debts**: who owes you and whom you owe, with due dates and reminders; tick them off when settled.
 - **Calendar** with a month view and timed or all-day events.
 - **Vitals**: meals against a daily calorie goal with a 7-day trend, and a
   weekday training plan whose streaks only count planned days.
