@@ -78,6 +78,67 @@ class RecurringIntegrationTest extends IntegrationTest {
         getAs(me, "/api/entries").andExpect(jsonPath("$.length()").value(1));
     }
 
+    @Test
+    void aConfirmRuleWaitsForTheUserThenBooksOnceWithTheRealAmount() throws Exception {
+        CurrentUser me = newUser();
+        LocalDate first = YearMonth.now(clock).atDay(1);
+        Map<String, Object> req = salary(me, 1, first);
+        req.put("autoPost", false);
+        long ruleId = body(postAs(me, "/api/recurring", req).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.awaitingConfirmation").value(true))).get("id").asLong();
+
+        // Neither creating it nor the nightly job books it.
+        recurring.runDue(LocalDate.now(clock));
+        assertThat(entriesFor(ruleId)).isZero();
+
+        postAs(me, "/api/recurring/" + ruleId + "/confirm", Map.of("on", first.toString(), "amount", "6350.50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.awaitingConfirmation").value(false))
+                .andExpect(jsonPath("$.nextRunOn").value(first.plusMonths(1).toString()));
+        assertThat(jdbc.queryForObject("SELECT amount FROM ledger_entry WHERE recurring_rule_id = ?",
+                java.math.BigDecimal.class, ruleId)).isEqualByComparingTo("6350.50");
+        // The user did it, so it earns XP like an entry they logged.
+        getAs(me, "/api/character").andExpect(jsonPath("$.xp").value(5));
+
+        // A second tap on the same date is refused rather than booking next month's.
+        postAs(me, "/api/recurring/" + ruleId + "/confirm", Map.of("on", first.toString()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("not_awaiting"));
+        assertThat(entriesFor(ruleId)).isEqualTo(1);
+    }
+
+    @Test
+    void skippingMovesOnWithoutBookingOneMissedMonthAtATime() throws Exception {
+        CurrentUser me = newUser();
+        LocalDate twoBack = YearMonth.now(clock).minusMonths(2).atDay(1);
+        Map<String, Object> req = salary(me, 1, twoBack);
+        req.put("autoPost", false);
+        long ruleId = body(postAs(me, "/api/recurring", req).andExpect(status().isCreated())).get("id").asLong();
+
+        postAs(me, "/api/recurring/" + ruleId + "/skip", Map.of("on", twoBack.toString()))
+                .andExpect(status().isOk())
+                // Last month is still waiting.
+                .andExpect(jsonPath("$.awaitingConfirmation").value(true))
+                .andExpect(jsonPath("$.nextRunOn").value(twoBack.plusMonths(1).toString()));
+        assertThat(entriesFor(ruleId)).isZero();
+    }
+
+    @Test
+    void switchingBackToAutomaticBooksWhatWasWaiting() throws Exception {
+        CurrentUser me = newUser();
+        Map<String, Object> req = salary(me, 1, YearMonth.now(clock).atDay(1));
+        req.put("autoPost", false);
+        long ruleId = body(postAs(me, "/api/recurring", req).andExpect(status().isCreated())).get("id").asLong();
+
+        req.remove("startOn");
+        req.put("autoPost", true);
+        putAs(me, "/api/recurring/" + ruleId, req)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.autoPost").value(true))
+                .andExpect(jsonPath("$.awaitingConfirmation").value(false));
+        assertThat(entriesFor(ruleId)).isEqualTo(1);
+    }
+
     /* ---------------- helpers ---------------- */
 
     private long createSalaryRule(CurrentUser me, int day, LocalDate startOn) throws Exception {

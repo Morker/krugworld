@@ -111,7 +111,7 @@ class GameIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.spentThisMonth").value(12.50))
                 .andExpect(jsonPath("$.quests[0].name").value("Trip"))
                 .andExpect(jsonPath("$.loot[0].amount").value(12.50))
-                .andExpect(jsonPath("$.badges.length()").value(11));
+                .andExpect(jsonPath("$.badges.length()").value(12));
     }
 
     /* ---------------- helpers ---------------- */

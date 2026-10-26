@@ -188,6 +188,8 @@ public class CharacterService {
                 new Badge("first_feast", "First feast", "Log a meal.", "bowl", xp.any(userId, XpLedger.MEAL_LOGGED)),
                 new Badge("iron_body", "Iron body", "Finish 10 workouts.", "barbell", xp.count(userId, XpLedger.WORKOUT_DONE) >= 10),
                 new Badge("idea_smith", "Idea smith", "Finish an idea in the Workshop.", "bulb", xp.any(userId, XpLedger.IDEA_DONE)),
+                new Badge("clean_slate", "Clean slate", "Have a debt paid back in full.", "handshake",
+                        xp.any(userId, XpLedger.DEBT_CLEARED)),
                 new Badge("adept", "Adept", "Reach level 5.", "crown", level >= 5));
     }
 

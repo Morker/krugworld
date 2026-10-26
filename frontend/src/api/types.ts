@@ -91,6 +91,26 @@ export type Rule = {
   dayOfMonth: number
   nextRunOn: string
   active: boolean
+  /** true: logs itself on the day. false: waits for you to confirm or skip it. */
+  autoPost: boolean
+  awaitingConfirmation: boolean
+}
+
+export type DebtDirection = 'THEY_OWE' | 'I_OWE'
+export type DebtPayment = { id: number; amount: number; paidOn: string; note: string }
+export type Debt = {
+  id: number
+  direction: DebtDirection
+  person: string
+  amount: number
+  repaid: number
+  outstanding: number
+  note: string
+  startedOn: string
+  dueOn: string | null
+  settledOn: string | null
+  overdue: boolean
+  payments: DebtPayment[]
 }
 
 export type Quest = {

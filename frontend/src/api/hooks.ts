@@ -4,6 +4,8 @@ import type {
   Account,
   Category,
   CharacterSheet,
+  Debt,
+  DebtDirection,
   Device,
   Entry,
   EntryRequest,
@@ -236,6 +238,7 @@ export type RuleInput = {
   startOn?: string
   note: string
   active?: boolean
+  autoPost?: boolean
 }
 
 export function useSaveRule() {
@@ -246,6 +249,26 @@ export function useSaveRule() {
         ? api<Rule>(`/api/recurring/${id}`, { method: 'PUT', json: body })
         : api<Rule>('/api/recurring', { method: 'POST', json: body }),
     onSuccess: invalidate,
+  })
+}
+
+// Confirming books an entry (and earns XP); skipping only moves the rule on.
+// Both send the date you saw as due, so a double tap can't book next month's.
+export function useConfirmRule() {
+  const invalidate = useInvalidateMoney()
+  return useMutation({
+    mutationFn: ({ id, on, amount }: { id: number; on: string; amount?: string }) =>
+      api<Rule>(`/api/recurring/${id}/confirm`, { method: 'POST', json: { on, amount } }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSkipRule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, on }: { id: number; on: string }) =>
+      api<Rule>(`/api/recurring/${id}/skip`, { method: 'POST', json: { on } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring'] }),
   })
 }
 
@@ -301,6 +324,73 @@ export function useTavernImport() {
   return useMutation({
     mutationFn: (payload: unknown) => api<ImportResult>('/api/import/tavern', { method: 'POST', json: payload }),
     onSuccess: () => qc.invalidateQueries(),
+  })
+}
+
+// ---------------- debts ----------------
+
+export const useDebts = () => useQuery({ queryKey: ['debts'], queryFn: () => api<Debt[]>('/api/debts') })
+
+export type DebtInput = {
+  direction: DebtDirection
+  person: string
+  amount: string
+  note: string
+  startedOn?: string
+  dueOn: string | null
+}
+
+// Clearing a debt can earn XP and a badge, so the Hall refreshes too.
+function useInvalidateDebts() {
+  const qc = useQueryClient()
+  return () =>
+    Promise.all([qc.invalidateQueries({ queryKey: ['debts'] }), qc.invalidateQueries({ queryKey: ['character'] })])
+}
+
+export function useSaveDebt() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: ({ id, ...body }: DebtInput & { id?: number }) =>
+      id
+        ? api<Debt>(`/api/debts/${id}`, { method: 'PUT', json: body })
+        : api<Debt>('/api/debts', { method: 'POST', json: body }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteDebt() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: (id: number) => api(`/api/debts/${id}`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  })
+}
+
+export function usePayDebt() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number; amount: string; paidOn: string; note: string }) =>
+      api<Debt>(`/api/debts/${id}/payments`, { method: 'POST', json: body }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteDebtPayment() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: ({ id, paymentId }: { id: number; paymentId: number }) =>
+      api<Debt>(`/api/debts/${id}/payments/${paymentId}`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  })
+}
+
+/** settle: let the rest go. reopen: undo that. */
+export function useSettleDebt() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: ({ id, reopen }: { id: number; reopen?: boolean }) =>
+      api<Debt>(`/api/debts/${id}/${reopen ? 'reopen' : 'settle'}`, { method: 'POST' }),
+    onSuccess: invalidate,
   })
 }
 

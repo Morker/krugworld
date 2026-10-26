@@ -17,6 +17,7 @@ public class XpLedger {
     public static final String MEAL_LOGGED = "MEAL_LOGGED";
     public static final String WORKOUT_DONE = "WORKOUT_DONE";
     public static final String IDEA_DONE = "IDEA_DONE";
+    public static final String DEBT_CLEARED = "DEBT_CLEARED";
 
     /** Rewards that mean "you showed up and did something today" — what streaks count. */
     public static final List<String> ACTIVITY = List.of(ENTRY_LOGGED, MEAL_LOGGED, WORKOUT_DONE, IDEA_DONE);

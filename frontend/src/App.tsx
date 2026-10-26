@@ -19,6 +19,7 @@ const LedgerPage = page(() => import('./pages/LedgerPage'), 'LedgerPage')
 const BudgetsPage = page(() => import('./pages/BudgetsPage'), 'BudgetsPage')
 const QuestsPage = page(() => import('./pages/QuestsPage'), 'QuestsPage')
 const RecurringPage = page(() => import('./pages/RecurringPage'), 'RecurringPage')
+const DebtsPage = page(() => import('./pages/DebtsPage'), 'DebtsPage')
 const AccountsPage = page(() => import('./pages/AccountsPage'), 'AccountsPage')
 const CalendarPage = page(() => import('./pages/CalendarPage'), 'CalendarPage')
 const VitalsPage = page(() => import('./pages/VitalsPage'), 'VitalsPage')
@@ -56,6 +57,7 @@ export default function App() {
         <Route path="budgets" element={<BudgetsPage />} />
         <Route path="quests" element={<QuestsPage />} />
         <Route path="recurring" element={<RecurringPage />} />
+        <Route path="debts" element={<DebtsPage />} />
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="vitals" element={<VitalsPage />} />

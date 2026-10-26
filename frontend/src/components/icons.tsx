@@ -12,6 +12,7 @@ import {
   IconDice5,
   IconFlame,
   IconGift,
+  IconHeartHandshake,
   IconHeartbeat,
   IconHome,
   IconMoon,
@@ -61,6 +62,7 @@ const BADGE_ICONS: Record<string, Icon> = {
   bowl: IconBowl,
   barbell: IconBarbell,
   bulb: IconBulb,
+  handshake: IconHeartHandshake,
 }
 
 export function CategoryIcon({ icon, color, size = 18 }: { icon: string; color: string; size?: number }) {
