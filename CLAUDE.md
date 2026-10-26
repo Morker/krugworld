@@ -20,12 +20,12 @@ Release only code that is pushed to GitHub, and number new migrations above prod
 ## Stack and layout
 
 - `backend/` — Spring Boot 3.3 (Java 17), Spring Data JPA + JdbcTemplate for aggregates,
-  Spring Security, Flyway (`db/migration/V1..V12`; production's V10 `push` came from the other PC and isn't merged here yet), Testcontainers 1.21.4 (pinned: older
+  Spring Security, Flyway (`db/migration/V1..V12`), Testcontainers 1.21.4 (pinned: older
   versions fail against Docker 29).
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
 - Packages: `auth`, `ledger`, `budget`, `recurring`, `quest`, `game`, `calendar`,
-  `workshop`, `vitals`, `life`, `debt`, `steward`, `device`, `importer`, `web`, `common`.
+  `workshop`, `vitals`, `life`, `debt`, `steward`, `device`, `push`, `importer`, `web`, `common`.
 - Two security chains: `/api/device/**` is stateless bearer-token only (`DeviceTokenFilter`,
   `ROLE_DEVICE`, principal `DevicePrincipal`); everything else is the browser chain
   (session + remember-me + CSRF, principal `CurrentUser`). Device API: `docs/DEVICE-API.md`.
@@ -75,8 +75,11 @@ Release only code that is pushed to GitHub, and number new migrations above prod
   Barlow Condensed**, four backgrounds, **Knight's steel** (`#151a22`) default.
 - **Gaby** (was "Barnaby"): female pixel-art steward (`frontend/src/steward/Portrait.tsx`),
   same family as before — burgundy cap + gold feather, gold spectacles, teal coat — with
-  auburn braids. Docks in the right column on wide screens. Replies in the user's mix of
-  **English and Malay** (rojak), light medieval flavour, short enough to be spoken aloud.
+  auburn braids. Docks in the right column on wide screens. Understands **English and Malay**
+  (rojak), light medieval flavour, short enough to be spoken aloud. **Browser chat replies in
+  one language per reply** (whichever the user's message is mostly in, never mixed: owner's
+  request 2026-10-22); **Desk Gaby's spoken replies keep the rojak mix**. Chosen per call via
+  `StewardService.Channel` (CHAT / VOICE).
 - **Language rule:** only Gaby's *spoken/chat reply* is rojak. Everything shown as screen
   text is English: device labels, her daily line (`GabyLine`), and the reply subtitle
   (the `TRANSLATION:` line). The "You: ..." transcript shows the user's own words as said.
@@ -102,6 +105,14 @@ Release only code that is pushed to GitHub, and number new migrations above prod
   `firmware/src/ca_certs.h`; LVGL's heap lives in PSRAM so TLS has internal RAM).
 - Remote: https://github.com/Morker/krugworld (private). The owner commits and pushes with
   GitHub Desktop.
+
+- **Phone notifications (2026-10-22):** Web Push from the PWA (`push` package, `V10`).
+  Hand-rolled RFC 8291 encryption + VAPID with JDK crypto only (`WebPushCrypto`, cross-checked
+  against Node's crypto); VAPID keys in `app_secret` row `vapid-keys` (never delete). Endpoints
+  are allow-listed to real push services (SSRF guard). `ReminderJob` runs every 5 min; pure rules
+  in `Reminders`; at-most-once via `notification_sent (user_id, kind, ref)`. Service-worker side is
+  `frontend/public/push-sw.js` (pulled into the generated worker via workbox `importScripts`).
+  Settings → Notifications. Not yet tried on a real phone.
 
 ## Next: Gaby as a physical device
 
@@ -132,4 +143,6 @@ is simplest for the ESP32; it streams) → device plays audio and shows the subt
    quick-log buttons). PlatformIO + Arduino + LVGL suggested to start.
 3. Tap-to-talk voice.
 4. Reminders and moods (events soon, workout not done, budget low, streak at risk).
+   Phone side done 2026-10-22 as Web Push (`push` package, see Status); the device
+   could reuse `Reminders.due` for its own nudges.
 5. "Hey Gaby" wake word on-device (ESP-IDF / ESP-SR or microWakeWord).

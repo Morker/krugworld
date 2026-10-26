@@ -2,6 +2,7 @@ package com.krugworld;
 
 import com.krugworld.auth.CurrentUser;
 import com.krugworld.auth.FakeResetMailer;
+import com.krugworld.push.FakePushSender;
 import com.krugworld.auth.User;
 import com.krugworld.auth.UserRegistered;
 import com.krugworld.auth.UserRepository;
@@ -41,7 +42,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
         "krugworld.steward.provider=fake",
         "krugworld.steward.voice.provider=fake"})
 @AutoConfigureMockMvc
-@Import({TestcontainersConfig.class, FakeChatProvider.class, FakeSpeechProvider.class, FakeResetMailer.class})
+@Import({TestcontainersConfig.class, FakeChatProvider.class, FakeSpeechProvider.class, FakeResetMailer.class,
+        FakePushSender.class})
 public abstract class IntegrationTest {
 
     @Autowired protected MockMvc mvc;

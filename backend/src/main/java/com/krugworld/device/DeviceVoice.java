@@ -100,7 +100,7 @@ public class DeviceVoice {
             }
             List<ChatMessage> conversation = recall(device.deviceId());
             conversation.add(ChatMessage.user(heard));
-            StewardReply reply = steward.chat(device.userId(), conversation);
+            StewardReply reply = steward.chat(device.userId(), conversation, StewardService.Channel.VOICE);
             remember(device.deviceId(), heard, reply.text());
             String speechId = queueSpeech(device.deviceId(), reply.text());
             return new VoiceReply(heard, reply.text(), reply.subtitle(), "/api/device/voice/speech/" + speechId,

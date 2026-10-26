@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { IconCheck, IconLogout, IconTrash, IconUpload } from '@tabler/icons-react'
+import { IconBell, IconCheck, IconLogout, IconTrash, IconUpload } from '@tabler/icons-react'
+import { api } from '../api/client'
 import {
   useDevices,
   useLogout,
   useMe,
   useNewPairingCode,
+  usePushDevices,
+  useRemovePushDevice,
   useRevokeDevice,
+  useSavePushSubscription,
+  useTestPush,
   useSavePreferences,
   useTavernImport,
 } from '../api/hooks'
@@ -63,6 +68,7 @@ export function SettingsPage() {
         <EmailSettings />
         <WeatherSettings />
         <DeskGaby />
+        <PhoneNotifications />
         <TavernImport />
       </div>
     </>
@@ -195,6 +201,144 @@ function DeskGaby() {
         </div>
       )}
       <ErrorLine error={devices.error ?? revoke.error} />
+    </Panel>
+  )
+}
+
+const PUSH_SUPPORTED = typeof window !== 'undefined' && 'serviceWorker' in navigator
+  && 'PushManager' in window && 'Notification' in window
+
+/** The VAPID public key comes as base64url; pushManager.subscribe wants the raw bytes. */
+function base64UrlBytes(text: string): Uint8Array<ArrayBuffer> {
+  const base64 = text.replace(/-/g, '+').replace(/_/g, '/')
+  return Uint8Array.from(atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4)), (c) => c.charCodeAt(0))
+}
+
+/**
+ * Web Push: this browser asks permission, subscribes with the server's VAPID
+ * key, and hands the subscription to the server, which then sends reminders
+ * even while KrugWorld is closed. Each browser is turned on separately.
+ */
+function PhoneNotifications() {
+  const devices = usePushDevices()
+  const save = useSavePushSubscription()
+  const remove = useRemovePushDevice()
+  const test = useTestPush()
+  // undefined: still looking; null: the service worker isn't running here (e.g. npm run dev).
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null | undefined>(undefined)
+  const [endpoint, setEndpoint] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<unknown>(null)
+
+  useEffect(() => {
+    if (!PUSH_SUPPORTED) return
+    let cancelled = false
+    navigator.serviceWorker.getRegistration().then(async (reg) => {
+      const sub = reg ? await reg.pushManager.getSubscription() : null
+      if (cancelled) return
+      setRegistration(reg ?? null)
+      setEndpoint(sub?.endpoint ?? null)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const list = devices.data ?? []
+  const here = list.find((d) => d.endpoint === endpoint)
+  const blocked = PUSH_SUPPORTED && Notification.permission === 'denied'
+
+  async function turnOn() {
+    if (!registration) return
+    setBusy(true)
+    setProblem(null)
+    try {
+      if (await Notification.requestPermission() !== 'granted') {
+        setProblem(new Error("Notifications weren't allowed. You can allow them in this site's settings."))
+        return
+      }
+      const { publicKey } = await api<{ publicKey: string }>('/api/push/key')
+      const sub = await registration.pushManager.getSubscription()
+        ?? await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlBytes(publicKey) })
+      await save.mutateAsync(sub.toJSON())
+      setEndpoint(sub.endpoint)
+    } catch (e) {
+      setProblem(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function turnOff() {
+    setBusy(true)
+    setProblem(null)
+    try {
+      const sub = await registration?.pushManager.getSubscription()
+      await sub?.unsubscribe()
+      if (here) await remove.mutateAsync(here.id)
+      setEndpoint(null)
+    } catch (e) {
+      setProblem(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Panel title="Notifications">
+      <p className="small muted" style={{ marginTop: 0 }}>
+        Gaby sends a raven to your phone: an event within the hour, meals to log at 2 pm and 10 pm,
+        training not done by 7 pm, a streak at risk by 9 pm, spending to log at 11 pm, and a budget
+        running low or over.
+      </p>
+
+      {!PUSH_SUPPORTED ? (
+        <p className="small">This browser can't receive notifications. On iPhone, add KrugWorld to the Home Screen first.</p>
+      ) : registration === null ? (
+        <p className="small">The app's service worker isn't running here. Reload the page; in local dev it never runs.</p>
+      ) : blocked ? (
+        <p className="small">Notifications are blocked for this site. Allow them in the browser's site settings, then come back.</p>
+      ) : here ? (
+        <div className="row-start wrap">
+          <span className="small"><IconCheck size={16} aria-hidden="true" /> On for this device ({here.label})</span>
+          <button onClick={turnOff} disabled={busy}>Turn off here</button>
+        </div>
+      ) : (
+        <button className="primary" onClick={turnOn} disabled={busy || registration === undefined}>
+          <IconBell size={18} aria-hidden="true" /> Turn on for this device
+        </button>
+      )}
+      <ErrorLine error={problem} />
+
+      {list.length > 0 && (
+        <>
+          <div className="list" style={{ marginTop: 12 }}>
+            {list.map((d) => (
+              <div key={d.id} className="list-row">
+                <span className="grow">
+                  <b>{d.label}</b>{d.id === here?.id && <span className="small muted"> (this device)</span>}
+                  <span className="small muted" style={{ display: 'block' }}>
+                    {d.lastSentAt ? `Last raven ${new Date(d.lastSentAt).toLocaleString()}` : 'No raven sent yet'}
+                  </span>
+                </span>
+                <button className="ghost" aria-label={`Remove ${d.label}`} disabled={remove.isPending || busy}
+                        onClick={() => (d.id === here?.id ? turnOff() : remove.mutate(d.id))}>
+                  <IconTrash size={18} aria-hidden="true" /> Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="row-start wrap" style={{ marginTop: 12 }}>
+            <button onClick={() => test.mutate()} disabled={test.isPending}>Send a test</button>
+            {test.data && (
+              <span className="small muted" role="status">
+                {test.data.sent === test.data.devices
+                  ? `Sent to ${test.data.sent} device${test.data.sent === 1 ? '' : 's'}.`
+                  : `Sent to ${test.data.sent} of ${test.data.devices} devices; the others were gone and are removed.`}
+              </span>
+            )}
+          </div>
+        </>
+      )}
+      <ErrorLine error={devices.error ?? remove.error ?? test.error} />
     </Panel>
   )
 }

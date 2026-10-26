@@ -14,6 +14,8 @@ import type {
   MonthBudget,
   MonthSummary,
   PairingCode,
+  PushDelivery,
+  PushDevice,
   Quest,
   Rule,
   Skin,
@@ -411,5 +413,37 @@ export function useRevokeDevice() {
   return useMutation({
     mutationFn: (id: number) => api(`/api/devices/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['devices'] }),
+  })
+}
+
+// ---- Phone notifications (Web Push) ----
+
+export function usePushDevices() {
+  return useQuery({ queryKey: ['push'], queryFn: () => api<PushDevice[]>('/api/push/subscriptions') })
+}
+
+/** Registers this browser's PushSubscription (as toJSON() gives it) with the server. */
+export function useSavePushSubscription() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (sub: PushSubscriptionJSON) => api<PushDevice>('/api/push/subscriptions', { method: 'POST', json: sub }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['push'] }),
+  })
+}
+
+export function useRemovePushDevice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api(`/api/push/subscriptions/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['push'] }),
+  })
+}
+
+export function useTestPush() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api<PushDelivery>('/api/push/test', { method: 'POST' }),
+    // A dead subscription found by the test is gone from the list now.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['push'] }),
   })
 }
