@@ -33,6 +33,9 @@ import java.util.stream.Collectors;
 @Transactional
 public class LedgerService {
 
+    /** NUMERIC(14,2) holds 12 digits before the point. */
+    private static final BigDecimal MAX_OPENING_BALANCE = new BigDecimal("1000000000000");
+
     private final AccountRepository accounts;
     private final CategoryRepository categories;
     private final LedgerEntryRepository entries;
@@ -87,6 +90,27 @@ public class LedgerService {
         Account account = account(userId, id);
         account.setArchived(false);
         return view(account, queries.balances(userId).get(id));
+    }
+
+    public AccountView accountView(Long userId, Long id) {
+        return view(account(userId, id), queries.balances(userId).get(id));
+    }
+
+    /**
+     * An admin repair: makes the account's balance come to {@code target} by
+     * moving its opening balance, so no entry appears and no month's earned
+     * or spent figure changes. Balances themselves are never stored.
+     */
+    public AccountView setBalance(Long userId, Long id, BigDecimal target) {
+        Account account = account(userId, id);
+        BigDecimal current = queries.balances(userId).get(id);
+        BigDecimal opening = account.getOpeningBalance().add(target).subtract(current);
+        if (opening.abs().compareTo(MAX_OPENING_BALANCE) >= 0) {
+            throw ApiException.badRequest("balance_out_of_range", "That balance is too large for this account.");
+        }
+        account.setOpeningBalance(opening);
+        accounts.flush();
+        return view(account, target);
     }
 
     private static AccountView view(Account a, BigDecimal balance) {
@@ -186,12 +210,35 @@ public class LedgerService {
         entries.delete(entries.findByIdAndUserId(id, userId).orElseThrow(() -> ApiException.notFound("Entry")));
     }
 
+    @Transactional(readOnly = true)
+    public EntryView entryView(Long userId, Long id) {
+        return lookup(userId).view(entries.findByIdAndUserId(id, userId).orElseThrow(() -> ApiException.notFound("Entry")));
+    }
+
+    /** An admin repair, not a logged entry: earns no XP, and history on archived accounts can be added to. */
+    public EntryView addCorrection(Long userId, EntryRequest req) {
+        LedgerEntry entry = new LedgerEntry(userId);
+        apply(userId, entry, req, id -> account(userId, id));
+        return lookup(userId).view(entries.save(entry));
+    }
+
+    /** An admin repair: entries on archived accounts can be fixed too. */
+    public EntryView correctEntry(Long userId, Long id, EntryRequest req) {
+        LedgerEntry entry = entries.findByIdAndUserId(id, userId).orElseThrow(() -> ApiException.notFound("Entry"));
+        apply(userId, entry, req, accountId -> account(userId, accountId));
+        return lookup(userId).view(entry);
+    }
+
+    private void apply(Long userId, LedgerEntry entry, EntryRequest req) {
+        apply(userId, entry, req, id -> activeAccount(userId, id));
+    }
+
     /**
      * The shape rules the database also enforces (see V3), checked here first
      * so the user gets a clear message instead of a constraint violation.
      */
-    private void apply(Long userId, LedgerEntry entry, EntryRequest req) {
-        Account from = activeAccount(userId, req.accountId());
+    private void apply(Long userId, LedgerEntry entry, EntryRequest req, Function<Long, Account> findAccount) {
+        Account from = findAccount.apply(req.accountId());
         entry.setType(req.type());
         entry.setAmount(req.amount());
         entry.setAccountId(from.getId());
@@ -202,7 +249,7 @@ public class LedgerService {
             if (req.toAccountId() == null || req.toAccountId().equals(req.accountId())) {
                 throw ApiException.badRequest("transfer_needs_two_accounts", "A transfer needs two different accounts.");
             }
-            entry.setToAccountId(activeAccount(userId, req.toAccountId()).getId());
+            entry.setToAccountId(findAccount.apply(req.toAccountId()).getId());
             entry.setCategoryId(null);
         } else {
             if (req.categoryId() == null) {

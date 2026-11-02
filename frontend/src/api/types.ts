@@ -15,6 +15,20 @@ export type Me = {
   calorieGoal: number
   tempUnit: 'C' | 'F'
   weather: WeatherPlace | null
+  admin: boolean
+}
+
+export type AdminUser = { id: number; username: string; admin: boolean; createdAt: string; totalBalance: number }
+// What a row looked like, as saved in the audit: an Entry or an Account.
+export type AuditState = { amount?: number; type?: EntryType; note?: string; balance?: number; name?: string }
+export type AuditRow = {
+  id: number
+  admin: string
+  action: 'ENTRY_CREATED' | 'ENTRY_UPDATED' | 'ENTRY_DELETED' | 'BALANCE_SET'
+  refId: number
+  before: AuditState | null
+  after: AuditState | null
+  at: string
 }
 
 export type AccountKind = 'BANK' | 'CASH' | 'EWALLET' | 'CARD' | 'OTHER'

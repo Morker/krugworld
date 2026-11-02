@@ -69,12 +69,12 @@ public class AuthController {
     }
 
     public record Me(Long id, String username, String email, String skin, String theme, int calorieGoal,
-                     String tempUnit, WeatherLocation weather) {
+                     String tempUnit, WeatherLocation weather, boolean admin) {
         static Me of(User u) {
             WeatherLocation weather = u.getWeatherPlace() == null ? null
                     : new WeatherLocation(u.getWeatherPlace(), u.getWeatherLat(), u.getWeatherLon());
             return new Me(u.getId(), u.getUsername(), u.getEmail(), u.getSkin(), u.getTheme(), u.getCalorieGoal(),
-                    u.getTempUnit(), weather);
+                    u.getTempUnit(), weather, u.isAdmin());
         }
     }
 

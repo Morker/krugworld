@@ -13,6 +13,7 @@ import {
   IconPlant2,
   IconRepeat,
   IconSettings,
+  IconShieldCheck,
   IconSparkles,
 } from '@tabler/icons-react'
 import type { Icon } from '@tabler/icons-react'
@@ -58,6 +59,18 @@ export const NAV: NavGroup[] = [
   { id: 'settings', label: null, icon: IconSettings, items: [{ to: '/settings', label: 'Settings', icon: IconSettings }] },
 ]
 
-export function groupFor(pathname: string): NavGroup | undefined {
-  return NAV.find((g) => g.items.some((i) => (i.to === '/' ? pathname === '/' : pathname.startsWith(i.to))))
+const ADMIN_GROUP: NavGroup = {
+  id: 'admin',
+  label: null,
+  icon: IconShieldCheck,
+  items: [{ to: '/admin', label: 'Admin', icon: IconShieldCheck }],
+}
+
+/** The map as this account sees it: admins get one more stop, just before Settings. */
+export function navFor(admin: boolean): NavGroup[] {
+  return admin ? [...NAV.slice(0, -1), ADMIN_GROUP, ...NAV.slice(-1)] : NAV
+}
+
+export function groupFor(pathname: string, groups: NavGroup[]): NavGroup | undefined {
+  return groups.find((g) => g.items.some((i) => (i.to === '/' ? pathname === '/' : pathname.startsWith(i.to))))
 }

@@ -16,6 +16,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,6 +25,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.RememberMeServices;
@@ -93,7 +96,7 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http, RememberMeServices rememberMeServices,
-                                           ObjectMapper json) throws Exception {
+                                           ObjectMapper json, UserRepository users) throws Exception {
         // Raw (unmasked) token in the cookie, so the header the frontend
         // echoes back matches it exactly.
         CsrfTokenRequestAttributeHandler csrfHandler = new CsrfTokenRequestAttributeHandler();
@@ -106,6 +109,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login", "/api/auth/register", "/api/status",
                     "/api/auth/password-reset/request", "/api/auth/password-reset/confirm").permitAll()
+                .requestMatchers("/api/admin/**").access(adminsOnly(users))
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll())
             .formLogin(form -> form
@@ -125,6 +129,16 @@ public class SecurityConfig {
             .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Asks the database on every call instead of keeping a role in the session
+     * or the year-long remember-me login: granting or revoking admin takes
+     * effect on the next request, with nobody having to log out.
+     */
+    private static AuthorizationManager<RequestAuthorizationContext> adminsOnly(UserRepository users) {
+        return (authentication, context) -> new AuthorizationDecision(
+                authentication.get().getPrincipal() instanceof CurrentUser me && users.existsByIdAndAdminTrue(me.id()));
     }
 
     /**

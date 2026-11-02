@@ -25,7 +25,7 @@ import type {
 // changes balances, budgets, the month summary and the character sheet.
 const MONEY_KEYS = [['entries'], ['accounts'], ['summary'], ['budgets'], ['character'], ['recurring']]
 
-function useInvalidateMoney() {
+export function useInvalidateMoney() {
   const qc = useQueryClient()
   return () => Promise.all(MONEY_KEYS.map((queryKey) => qc.invalidateQueries({ queryKey })))
 }

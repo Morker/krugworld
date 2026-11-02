@@ -26,6 +26,7 @@ const WorkshopPage = page(() => import('./pages/WorkshopPage'), 'WorkshopPage')
 const StewardPage = page(() => import('./pages/StewardPage'), 'StewardPage')
 const OraclePage = page(() => import('./pages/OraclePage'), 'OraclePage')
 const SettingsPage = page(() => import('./pages/SettingsPage'), 'SettingsPage')
+const AdminPage = page(() => import('./pages/AdminPage'), 'AdminPage')
 
 export default function App() {
   const { data: me, isLoading, error } = useMe()
@@ -63,6 +64,7 @@ export default function App() {
         <Route path="steward" element={<StewardPage />} />
         <Route path="oracle" element={<OraclePage />} />
         <Route path="settings" element={<SettingsPage />} />
+        {me.admin && <Route path="admin" element={<AdminPage />} />}
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

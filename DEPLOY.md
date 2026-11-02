@@ -81,6 +81,28 @@ database. To turn on "Forgot your passphrase?":
 
 Port 587 is used on purpose: Tencent Cloud blocks outbound port 25.
 
+## Admin account (fixing data after a bug)
+
+An admin gets **Admin** in the menu (`/admin`): pick a user, then correct their
+entries or set an account's balance. The app can't grant this itself, so a
+stolen login or a bug in the API can't create an admin. Register the account
+normally, then on the server:
+
+```bash
+cd /opt/krugworld && docker compose exec -T db psql -U krugworld krugworld -c "UPDATE app_user SET is_admin = true WHERE lower(username) = lower('YOUR_USERNAME')"
+```
+
+Set `is_admin = false` to remove it. Either takes effect on the next request,
+with no restart or new login; reload the page to see the menu change.
+
+- **Wrong entry:** edit or delete that entry. This fixes money in/spent for its
+  month, and the total follows.
+- **Wrong total with no entry to blame:** use the pencil on the account. It
+  moves the opening balance, so no month's figures change.
+- Admin corrections earn no XP, and each one is saved with its before and after
+  values (`admin_audit`, shown as the page's Change log). Back up first for a
+  big repair (see Backups).
+
 ## Phone notifications (Web Push)
 
 Nothing to configure. On first use the app generates its VAPID key pair and

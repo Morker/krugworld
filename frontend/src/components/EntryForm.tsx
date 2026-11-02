@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { money } from '../api/client'
 import { useAccounts, useCategories, useSaveEntry } from '../api/hooks'
-import type { Entry, EntryType } from '../api/types'
+import type { Account, Category, Entry, EntryRequest, EntryType } from '../api/types'
 import { today } from '../lib/format'
 import { ErrorLine, Field, Modal } from './ui'
 
@@ -22,6 +22,41 @@ export function EntryForm({ entry, onClose, onSaved }: {
   const categories = (useCategories().data ?? []).filter((c) => !c.archived)
   const save = useSaveEntry()
 
+  return (
+    <EntryEditor
+      entry={entry}
+      accounts={accounts}
+      categories={categories}
+      newHint="+5 XP for logging"
+      newLabel="Log it"
+      saving={save.isPending}
+      error={save.error}
+      onClose={onClose}
+      onSubmit={(body) => save.mutate(
+        { ...body, id: entry?.id },
+        {
+          onSuccess: () => {
+            onSaved?.(!entry)
+            onClose()
+          },
+        },
+      )}
+    />
+  )
+}
+
+/** The form itself. It only knows the lists it's handed, so the admin page can use it on someone else's books. */
+export function EntryEditor({ entry, accounts, categories, newHint, newLabel, saving, error, onClose, onSubmit }: {
+  entry?: Entry
+  accounts: Account[]
+  categories: Category[]
+  newHint: string
+  newLabel: string
+  saving: boolean
+  error: unknown
+  onClose: () => void
+  onSubmit: (body: EntryRequest) => void
+}) {
   const [type, setType] = useState<EntryType>(entry?.type ?? 'EXPENSE')
   const [amount, setAmount] = useState(entry ? String(entry.amount) : '')
   const [occurredOn, setOccurredOn] = useState(entry?.occurredOn ?? today())
@@ -52,24 +87,15 @@ export function EntryForm({ entry, onClose, onSaved }: {
       return
     }
     setProblem(null)
-    save.mutate(
-      {
-        id: entry?.id,
-        type,
-        amount: money(value),
-        accountId: Number(account),
-        toAccountId: type === 'TRANSFER' ? Number(toAccountId) : null,
-        categoryId: type === 'TRANSFER' ? null : Number(category),
-        occurredOn,
-        note,
-      },
-      {
-        onSuccess: () => {
-          onSaved?.(!entry)
-          onClose()
-        },
-      },
-    )
+    onSubmit({
+      type,
+      amount: money(value),
+      accountId: Number(account),
+      toAccountId: type === 'TRANSFER' ? Number(toAccountId) : null,
+      categoryId: type === 'TRANSFER' ? null : Number(category),
+      occurredOn,
+      note,
+    })
   }
 
   return (
@@ -123,12 +149,12 @@ export function EntryForm({ entry, onClose, onSaved }: {
         </Field>
 
         {problem && <p className="field-error" role="alert">{problem}</p>}
-        <ErrorLine error={save.error} />
+        <ErrorLine error={error} />
 
         <div className="row">
-          <span className="muted small">{entry ? '' : '+5 XP for logging'}</span>
-          <button type="submit" className="primary" disabled={save.isPending}>
-            {save.isPending ? 'Saving…' : entry ? 'Save' : 'Log it'}
+          <span className="muted small">{entry ? '' : newHint}</span>
+          <button type="submit" className="primary" disabled={saving}>
+            {saving ? 'Saving…' : entry ? 'Save' : newLabel}
           </button>
         </div>
       </form>

@@ -49,6 +49,10 @@ public class User {
     @Column(name = "temp_unit", nullable = false, length = 1)
     private String tempUnit = "C";
 
+    /** Read-only here on purpose: no code path can make someone an admin, only SQL on the server. */
+    @Column(name = "is_admin", nullable = false, insertable = false, updatable = false)
+    private boolean admin;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -129,6 +133,10 @@ public class User {
 
     public void setTempUnit(String tempUnit) {
         this.tempUnit = tempUnit;
+    }
+
+    public boolean isAdmin() {
+        return admin;
     }
 
     public OffsetDateTime getCreatedAt() {

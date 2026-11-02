@@ -18,12 +18,12 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 ## Stack and layout
 
 - `backend/` — Spring Boot 3.3 (Java 17), Spring Data JPA + JdbcTemplate for aggregates,
-  Spring Security, Flyway (`db/migration/V1..V10`), Testcontainers 1.21.4 (pinned: older
+  Spring Security, Flyway (`db/migration/V1..V11`), Testcontainers 1.21.4 (pinned: older
   versions fail against Docker 29).
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
 - Packages: `auth`, `ledger`, `budget`, `recurring`, `quest`, `game`, `calendar`,
-  `workshop`, `vitals`, `life`, `steward`, `device`, `push`, `importer`, `web`, `common`.
+  `workshop`, `vitals`, `life`, `steward`, `device`, `push`, `importer`, `admin`, `web`, `common`.
 - Two security chains: `/api/device/**` is stateless bearer-token only (`DeviceTokenFilter`,
   `ROLE_DEVICE`, principal `DevicePrincipal`); everything else is the browser chain
   (session + remember-me + CSRF, principal `CurrentUser`). Device API: `docs/DEVICE-API.md`.
@@ -52,6 +52,10 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
   asking never reveals whether an email exists; mail goes out on a background thread through
   `ResetMailer` (SMTP via `SPRING_MAIL_*`, `FakeResetMailer` in tests). Off unless SMTP is configured
   (see DEPLOY.md). `management.health.mail.enabled=false` so a dead SMTP server can't fail redeploys.
+- Admin (`admin` package, V11): `app_user.is_admin` is read-only in the app, granted only by SQL
+  (see DEPLOY.md) and checked in the database on every `/api/admin/**` call, never kept in the
+  session. Admin writes reuse `LedgerService`, earn no XP, and write `admin_audit` in the same
+  transaction. Setting a total moves `opening_balance`; balances stay computed.
 - Tests: `IntegrationTest` base boots the app against Testcontainers Postgres with the
   scheduler off and the Steward on a scripted `FakeChatProvider` (no network, no cost).
 

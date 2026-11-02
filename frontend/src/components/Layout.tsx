@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { IconLogout } from '@tabler/icons-react'
-import { useLogout } from '../api/hooks'
+import { useLogout, useMe } from '../api/hooks'
 import { StewardDock } from '../steward/StewardDock'
-import { groupFor, NAV } from './nav'
+import { groupFor, navFor } from './nav'
 import { PageBoundary } from './PageBoundary'
 
 const DOCK_KEY = 'krugworld.dock-open'
@@ -18,8 +18,10 @@ function readDock(): boolean {
 
 export function Layout() {
   const logout = useLogout()
+  const { data: me } = useMe()
   const { pathname } = useLocation()
-  const current = groupFor(pathname)
+  const nav = navFor(me?.admin ?? false)
+  const current = groupFor(pathname, nav)
   // Remembered per browser: if you like Gaby docked, she stays docked.
   const [dockOpen, setDockOpen] = useState(readDock)
   const onStewardPage = pathname.startsWith('/steward')
@@ -43,7 +45,7 @@ export function Layout() {
           <div className="muted small">a realm of your own</div>
         </div>
 
-        {NAV.map((group) => (
+        {nav.map((group) => (
           <div key={group.id} className="nav-group">
             {group.label && <div className="nav-group-label">{group.label}</div>}
             {group.items.map(({ to, label, icon: Glyph }) => (
