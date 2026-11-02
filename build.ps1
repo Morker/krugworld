@@ -26,7 +26,8 @@ try {
 
 Push-Location (Join-Path $root 'backend')
 try {
-    $mvnArgs = @('-q', 'package')
+    # clean: a renamed migration's old copy in target/ would otherwise ship in the jar.
+    $mvnArgs = @('-q', 'clean', 'package')
     if ($SkipTests) { $mvnArgs += '-DskipTests' }
     & .\mvnw.cmd @mvnArgs
     if ($LASTEXITCODE -ne 0) { throw 'backend build failed' }

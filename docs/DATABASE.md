@@ -34,16 +34,19 @@ what Flyway built and refuses to start if they don't.
 | 11 | `V11__recurring_confirm.sql` | `recurring_rule.auto_post` |
 | 12 | `V12__debts.sql` | `debt`, `debt_payment` |
 | 13 | `V13__simple_debts.sql` | drops `debt_payment`: debts are ticked off, not repaid in parts |
+| 14 | `V14__admin.sql` | `app_user.is_admin`, `admin_audit` |
 
 Every table that belongs to a person has `user_id … REFERENCES app_user (id) ON DELETE
-CASCADE`, so deleting an account removes everything it owned.
+CASCADE`, so deleting an account removes everything it owned. The exception is
+`admin_audit`: it has no cascade, so the record of an admin change outlives nothing by
+accident, and an account named in it can't be deleted until that history is dealt with.
 
 ```mermaid
 timeline
     title Schema history
     2026-10-13 : V1 baseline : V2 users : V3 ledger : V4 recurring : V5 quests and XP : V6 life : V7 steward usage : V8 devices
     2026-10-22 : V9 password reset : V10 push (other PC)
-    next release : V11 recurring confirm : V12 debts : V13 simple debts
+    next release : V11 recurring confirm : V12 debts : V13 simple debts : V14 admin
 ```
 
 ## Entity relationships

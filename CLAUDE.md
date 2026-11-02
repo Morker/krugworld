@@ -20,7 +20,7 @@ Release only code that is pushed to GitHub, and number new migrations above prod
 ## Stack and layout
 
 - `backend/` — Spring Boot 3.3 (Java 17), Spring Data JPA + JdbcTemplate for aggregates,
-  Spring Security, Flyway (`db/migration/V1..V13`), Testcontainers 1.21.4 (pinned: older
+  Spring Security, Flyway (`db/migration/V1..V14`), Testcontainers 1.21.4 (pinned: older
   versions fail against Docker 29).
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
@@ -54,7 +54,7 @@ Release only code that is pushed to GitHub, and number new migrations above prod
   asking never reveals whether an email exists; mail goes out on a background thread through
   `ResetMailer` (SMTP via `SPRING_MAIL_*`, `FakeResetMailer` in tests). Off unless SMTP is configured
   (see DEPLOY.md). `management.health.mail.enabled=false` so a dead SMTP server can't fail redeploys.
-- Admin (`admin` package, V11): `app_user.is_admin` is read-only in the app, granted only by SQL
+- Admin (`admin` package, V14): `app_user.is_admin` is read-only in the app, granted only by SQL
   (see DEPLOY.md) and checked in the database on every `/api/admin/**` call, never kept in the
   session. Admin writes reuse `LedgerService`, earn no XP, and write `admin_audit` in the same
   transaction. Setting a total moves `opening_balance`; balances stay computed.

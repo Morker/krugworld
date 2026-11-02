@@ -134,7 +134,7 @@ docker compose -f /opt/krugworld/docker-compose.yml exec -T db pg_dump -U krugwo
 - **Building on Windows:** if `build.ps1` stops on a JVM warning ("Sharing is only
   supported for boot loader classes…"), that's PowerShell 5.1 treating any stderr as
   an error, not a failed build. Run the same steps from Git Bash instead:
-  `cd frontend && npm run build`, then `cd backend && ./mvnw -q package`, then copy
+  `cd frontend && npm run build`, then `cd backend && ./mvnw -q clean package`, then copy
   `backend/target/krugworld-0.1.0.jar` to `deploy/krugworld.jar`. Set `JAVA_HOME` to an
   installed JDK if the Tavern's portable one isn't there.
 - **Swap the jar safely:** upload as `krugworld.jar.new`, then `mv` it over the old one
