@@ -8,6 +8,19 @@
       "port": 5174
     },
     {
+      "name": "frontend-5175",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "5175", "--strictPort"],
+      "port": 5175
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd backend && .\\mvnw.cmd spring-boot:run"],
+      "port": 8085,
+      "autoPort": false
+    },
+    {
       "name": "frontend-build-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "preview", "--", "--port", "4173", "--strictPort"],

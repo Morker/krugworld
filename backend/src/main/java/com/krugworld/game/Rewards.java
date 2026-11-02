@@ -1,5 +1,7 @@
 package com.krugworld.game;
 
+import com.krugworld.debt.DebtCleared;
+import com.krugworld.debt.DebtService;
 import com.krugworld.ledger.EntryLogged;
 import com.krugworld.quest.QuestCompleted;
 import com.krugworld.quest.QuestService;
@@ -53,6 +55,11 @@ public class Rewards {
     @EventListener
     public void onIdeaFinished(IdeaFinished event) {
         xp.award(event.userId(), XpLedger.IDEA_DONE, event.ideaId().toString(), IDEA_XP);
+    }
+
+    @EventListener
+    public void onDebtCleared(DebtCleared event) {
+        xp.award(event.userId(), XpLedger.DEBT_CLEARED, event.debtId().toString(), DebtService.DEBT_CLEARED_XP);
     }
 
     @EventListener

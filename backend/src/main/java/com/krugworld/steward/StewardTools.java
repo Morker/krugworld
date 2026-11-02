@@ -4,6 +4,8 @@ import com.krugworld.auth.UserRepository;
 import com.krugworld.budget.BudgetService;
 import com.krugworld.calendar.CalendarService;
 import com.krugworld.common.ApiException;
+import com.krugworld.debt.Debt;
+import com.krugworld.debt.DebtService;
 import com.krugworld.game.CharacterService;
 import com.krugworld.ledger.LedgerDtos.AccountView;
 import com.krugworld.ledger.LedgerDtos.CategoryRequest;
@@ -27,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +58,7 @@ public class StewardTools {
     private final LedgerService ledger;
     private final BudgetService budgets;
     private final RecurringService recurring;
+    private final DebtService debts;
     private final QuestService quests;
     private final CalendarService calendar;
     private final VitalsService vitals;
@@ -64,12 +68,13 @@ public class StewardTools {
     private final Clock clock;
     private final List<StewardTool> all;
 
-    public StewardTools(LedgerService ledger, BudgetService budgets, RecurringService recurring, QuestService quests,
-                        CalendarService calendar, VitalsService vitals, WorkshopService workshop,
+    public StewardTools(LedgerService ledger, BudgetService budgets, RecurringService recurring, DebtService debts,
+                        QuestService quests, CalendarService calendar, VitalsService vitals, WorkshopService workshop,
                         CharacterService character, UserRepository users, Clock clock) {
         this.ledger = ledger;
         this.budgets = budgets;
         this.recurring = recurring;
+        this.debts = debts;
         this.quests = quests;
         this.calendar = calendar;
         this.vitals = vitals;
@@ -171,9 +176,26 @@ public class StewardTools {
                             amount.signum() > 0 ? amount : null));
                 }));
 
-        t.add(new StewardTool("list_recurring", "Recurring entries (salary, rent, subscriptions) and when each next runs.",
+        t.add(new StewardTool("list_recurring", "Recurring entries (salary, rent, subscriptions), when each next runs, "
+                        + "and which are awaiting the user's confirmation.",
                 object(props()),
                 (uid, in) -> recurring.list(uid)));
+
+        t.add(new StewardTool("confirm_recurring",
+                "Confirm a recurring entry that is awaiting confirmation (see list_recurring), logging it. "
+                        + "Give amount only if this time's amount differs; skip=true lets this one pass unlogged.",
+                object(props("id", integer("Recurring entry id"), "amount", number("RM; optional"),
+                        "skip", bool("True to skip this occurrence instead")), "id"),
+                (uid, in) -> {
+                    RecurringService.RuleView rule = recurring.list(uid).stream()
+                            .filter(r -> r.id().equals(id(in)) && r.awaitingConfirmation()).findFirst()
+                            .orElseThrow(() -> new StewardException("That recurring entry isn't awaiting confirmation."));
+                    if (Boolean.TRUE.equals(in.get("skip"))) {
+                        return recurring.skip(uid, rule.id(), new RecurringService.SkipRequest(rule.nextRunOn()));
+                    }
+                    return recurring.confirm(uid, rule.id(), new RecurringService.ConfirmRequest(rule.nextRunOn(),
+                            in.get("amount") == null ? null : money(in, "amount")));
+                }));
 
         t.add(new StewardTool("add_recurring", "Add something that repeats monthly, logged automatically on its day.",
                 object(props(
@@ -182,7 +204,9 @@ public class StewardTools {
                                 "category", string("Category name"),
                                 "day_of_month", integer("1-31; 29-31 fall on the last day of shorter months"),
                                 "account", string("Account name; optional"),
-                                "note", string("What it is, e.g. 'Rent'")),
+                                "note", string("What it is, e.g. 'Rent'"),
+                                "auto", bool("True (default): logged by itself on the day. False: waits for the user "
+                                        + "to confirm it each month (for bills whose amount varies)")),
                         "type", "amount", "category", "day_of_month"),
                 (uid, in) -> {
                     LedgerEntry.Type type = LedgerEntry.Type.valueOf(str(in, "type").toUpperCase());
@@ -190,7 +214,8 @@ public class StewardTools {
                     Long category = category(uid, str(in, "category"),
                             type == LedgerEntry.Type.INCOME ? Category.Kind.INCOME : Category.Kind.EXPENSE).id();
                     return recurring.create(uid, new RecurringService.RuleRequest(type, money(in, "amount"), account.id(),
-                            category, intVal(in, "day_of_month"), null, opt(in, "note"), true));
+                            category, intVal(in, "day_of_month"), null, opt(in, "note"), true,
+                            !Boolean.FALSE.equals(in.get("auto"))));
                 }));
 
         t.add(new StewardTool("list_quests", "Savings quests (goals) and their progress.",
@@ -211,6 +236,46 @@ public class StewardTools {
                             .filter(v -> v.name().equalsIgnoreCase(name)).findFirst()
                             .orElseThrow(() -> new StewardException("No quest called '" + name + "'."));
                     return quests.contribute(uid, q.id(), new QuestService.ContributionRequest(money(in, "amount")));
+                }));
+
+        // ---------------- debts ----------------
+
+        t.add(new StewardTool("list_debts",
+                "Debts between the user and other people: who owes the user (THEY_OWE) and whom the user owes "
+                        + "(I_OWE), how much, due dates, and which are settled. Open ones first.",
+                object(props()),
+                (uid, in) -> debts.list(uid)));
+
+        t.add(new StewardTool("add_debt", "Remember a new debt: someone borrowed from the user, or the user borrowed.",
+                object(props(
+                                "direction", stringEnum("they_owe: the person owes the user; i_owe: the user owes them",
+                                        "they_owe", "i_owe"),
+                                "person", string("Who, e.g. 'Ali'"),
+                                "amount", number("RM"),
+                                "note", string("What for; optional"),
+                                "due_on", string("YYYY-MM-DD; optional")),
+                        "direction", "person", "amount"),
+                (uid, in) -> debts.create(uid, new DebtService.DebtRequest(
+                        Debt.Direction.valueOf(str(in, "direction").toUpperCase()), str(in, "person"),
+                        money(in, "amount"), opt(in, "note"), null,
+                        in.get("due_on") == null ? null : LocalDate.parse(str(in, "due_on"))))));
+
+        t.add(new StewardTool("settle_debt",
+                "Tick off an open debt with that person as settled (paid back, or no longer owed). "
+                        + "The oldest one if there are several.",
+                object(props("person", string("Who"),
+                        "direction", stringEnum("Which way, if the user both owes and is owed by this person",
+                                "they_owe", "i_owe")),
+                        "person"),
+                (uid, in) -> {
+                    String person = str(in, "person");
+                    String direction = in.get("direction") == null ? null : str(in, "direction").toUpperCase();
+                    DebtService.DebtView debt = debts.open(uid).stream()
+                            .filter(d -> d.person().equalsIgnoreCase(person)
+                                    && (direction == null || d.direction().name().equals(direction)))
+                            .min(Comparator.comparing(DebtService.DebtView::startedOn))
+                            .orElseThrow(() -> new StewardException("No open debt with '" + person + "'."));
+                    return debts.settle(uid, debt.id());
                 }));
 
         // ---------------- calendar ----------------

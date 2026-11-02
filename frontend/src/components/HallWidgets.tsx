@@ -1,23 +1,28 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  IconArrowDownRight,
-  IconArrowUpRight,
   IconBulb,
+  IconCalendarDue,
   IconCloud,
   IconCloudRain,
   IconCloudStorm,
+  IconHeartHandshake,
   IconMapPin,
+  IconRosetteDiscountCheck,
   IconSnowflake,
   IconSquare,
   IconSquareCheck,
   IconSun,
 } from '@tabler/icons-react'
 import type { Icon } from '@tabler/icons-react'
-import { useMe } from '../api/hooks'
+import { useDebts, useMe, useRules } from '../api/hooks'
 import { useLifeToday, useSetWorkoutDone } from '../api/lifeHooks'
-import { relativeDay, time, today } from '../lib/format'
-import { Bar, Panel } from './ui'
+import type { Rule } from '../api/types'
+import { dayLabel, percent, relativeDay, time, today } from '../lib/format'
+import { CategoryIcon } from './icons'
+import { SealDialog } from './SealDialog'
+import { Bar, Empty, Money, Panel } from './ui'
 
 // ---------------- weather (Open-Meteo: free, no key, called from the browser) ----------------
 
@@ -83,50 +88,6 @@ export function WeatherChip() {
   )
 }
 
-// ---------------- markets (CoinGecko: Bitcoin, and Tether Gold as a gold-per-ounce price) ----------------
-
-type Prices = Record<'bitcoin' | 'tether-gold', { usd: number; usd_24h_change: number }>
-
-export function MarketChip() {
-  const prices = useQuery({
-    queryKey: ['markets'],
-    staleTime: 10 * 60_000,
-    queryFn: async () => {
-      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,tether-gold&vs_currencies=usd&include_24hr_change=true')
-      if (!res.ok) throw new Error('markets')
-      return (await res.json()) as Prices
-    },
-  })
-  const p = prices.data
-  if (!p) {
-    return <div className="mini small muted">{prices.isError ? 'Markets quiet' : 'Checking markets…'}</div>
-  }
-  return (
-    <div className="mini">
-      <Price label="Gold" value={p['tether-gold']?.usd} change={p['tether-gold']?.usd_24h_change} />
-      <span className="mini-divider" />
-      <Price label="BTC" value={p.bitcoin?.usd} change={p.bitcoin?.usd_24h_change} />
-    </div>
-  )
-}
-
-function Price({ label, value, change }: { label: string; value?: number; change?: number }) {
-  if (value === undefined) return null
-  const up = (change ?? 0) >= 0
-  const Arrow = up ? IconArrowUpRight : IconArrowDownRight
-  return (
-    <div>
-      <div className="small muted" style={{ lineHeight: 1.1 }}>{label}</div>
-      <div className="num">
-        <span className="gold">${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
-        {change !== undefined && (
-          <span className={`small ${up ? 'pos' : 'neg'}`}> <Arrow size={12} aria-hidden="true" />{Math.abs(change).toFixed(1)}%</span>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // ---------------- today: meals, training and what's coming, in one panel ----------------
 
 export function TodayPanel() {
@@ -168,6 +129,91 @@ export function TodayPanel() {
         <div className="small muted" style={{ marginTop: 6 }}>
           <IconBulb size={14} aria-hidden="true" /> <Link to="/workshop">{t.ideasInProgress} idea{t.ideasInProgress > 1 ? 's' : ''} on the anvil</Link>
         </div>
+      )}
+    </Panel>
+  )
+}
+
+// ---------------- recurring entries waiting for the user's confirmation ----------------
+
+/** Only shows up when something is due: bills you chose to confirm yourself. */
+export function AwaitingSeal({ onSealed }: { onSealed: () => void }) {
+  const rules = useRules()
+  const [sealing, setSealing] = useState<Rule | null>(null)
+  const due = (rules.data ?? []).filter((r) => r.awaitingConfirmation)
+  if (due.length === 0) return null
+  return (
+    <Panel title="Awaiting your seal" className="seal-panel"
+           action={<Link to="/recurring" className="small">Recurring</Link>}>
+      <div className="list">
+        {due.slice(0, 3).map((r) => (
+          <div key={r.id} className="list-row" style={{ padding: '4px 2px' }}>
+            <CategoryIcon icon={r.category.icon} color={r.category.color} size={16} />
+            <span className="grow">
+              <span className="title" style={{ display: 'block' }}>{r.note || r.category.name}</span>
+              <span className="small muted">{dayLabel(r.nextRunOn)}</span>
+            </span>
+            <span className={`num ${r.type === 'INCOME' ? 'pos' : ''}`}>
+              {r.type === 'INCOME' ? '+' : '−'}<Money value={r.amount} />
+            </span>
+            <button className="seal-btn" aria-label={`Confirm ${r.note || r.category.name}`} onClick={() => setSealing(r)}>
+              <IconRosetteDiscountCheck size={18} aria-hidden="true" />
+            </button>
+          </div>
+        ))}
+      </div>
+      {due.length > 3 && <div className="small muted" style={{ marginTop: 4 }}>and {due.length - 3} more</div>}
+      {sealing && <SealDialog rule={sealing} onClose={() => setSealing(null)} onSealed={onSealed} />}
+    </Panel>
+  )
+}
+
+// ---------------- debts: the tug of war between what you're owed and what you owe ----------------
+
+export function DebtsPanel() {
+  const debts = useDebts()
+  if (!debts.data) return <Panel title="Debts"><span className="small muted">Counting IOUs…</span></Panel>
+  const open = debts.data.filter((d) => !d.settledOn)
+  const owed = open.filter((d) => d.direction === 'THEY_OWE').reduce((s, d) => s + d.amount, 0)
+  const owe = open.filter((d) => d.direction === 'I_OWE').reduce((s, d) => s + d.amount, 0)
+  // Overdue first, then whatever falls due soonest.
+  const top = [...open].sort((a, b) => Number(b.overdue) - Number(a.overdue)
+    || (a.dueOn ?? '9999').localeCompare(b.dueOn ?? '9999')).slice(0, 3)
+
+  return (
+    <Panel title="Debts" action={<Link to="/debts" className="small">All debts</Link>}>
+      {open.length === 0 ? (
+        <Empty icon={<IconHeartHandshake size={22} />}>
+          <span className="small">No debts on the books.</span>
+          <div><Link to="/debts" className="small">Record one</Link></div>
+        </Empty>
+      ) : (
+        <>
+          <div className="row small">
+            <span>Owed to you <Money value={owed} className="pos" /></span>
+            <span>You owe <Money value={owe} className="neg" /></span>
+          </div>
+          <div className="tug" role="img" aria-label={`Owed to you ${Math.round(percent(owed, owed + owe))}%, you owe the rest`}>
+            <div style={{ width: `${percent(owed, owed + owe)}%` }} />
+          </div>
+          <div className="list">
+            {top.map((d) => (
+              <div key={d.id} className="list-row" style={{ padding: '3px 2px' }}>
+                <span className="debt-face small-face" aria-hidden="true"
+                      style={{ borderColor: d.direction === 'THEY_OWE' ? 'var(--ok)' : 'var(--hp)' }}>
+                  {d.person.charAt(0).toUpperCase()}
+                </span>
+                <span className="grow title">{d.person}</span>
+                {d.dueOn && (
+                  <span className={`small ${d.overdue ? 'neg' : 'muted'}`} style={{ whiteSpace: 'nowrap' }}>
+                    <IconCalendarDue size={13} aria-hidden="true" /> {d.overdue ? 'overdue' : relativeDay(d.dueOn)}
+                  </span>
+                )}
+                <Money value={d.amount} className={d.direction === 'THEY_OWE' ? 'pos' : 'neg'} />
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </Panel>
   )

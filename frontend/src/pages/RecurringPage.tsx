@@ -1,19 +1,21 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { IconPencil, IconPlayerPause, IconPlayerPlay, IconPlus, IconRepeat, IconTrash } from '@tabler/icons-react'
+import { IconBolt, IconHandFinger, IconPencil, IconPlayerPause, IconPlayerPlay, IconPlus, IconRepeat, IconRosetteDiscountCheck, IconTrash } from '@tabler/icons-react'
 import { money } from '../api/client'
 import { useAccounts, useCategories, useDeleteRule, useRules, useSaveRule } from '../api/hooks'
 import type { Rule } from '../api/types'
 import { CategoryIcon } from '../components/icons'
+import { SealDialog } from '../components/SealDialog'
 import { Empty, ErrorLine, Field, Loading, Modal, Money, Panel } from '../components/ui'
 import { dayLabel, today } from '../lib/format'
 
-/** Salary, rent, subscriptions: logged automatically on their day each month. */
+/** Salary, rent, subscriptions: logged on their day each month, by themselves or once you confirm. */
 export function RecurringPage() {
   const rules = useRules()
   const save = useSaveRule()
   const remove = useDeleteRule()
   const [editing, setEditing] = useState<Rule | 'new' | null>(null)
+  const [sealing, setSealing] = useState<Rule | null>(null)
 
   const list = rules.data ?? []
   const monthlyIn = list.filter((r) => r.active && r.type === 'INCOME').reduce((s, r) => s + r.amount, 0)
@@ -22,7 +24,7 @@ export function RecurringPage() {
   function toggle(r: Rule) {
     save.mutate({
       id: r.id, type: r.type, amount: money(r.amount), accountId: r.account.id, categoryId: r.category.id,
-      dayOfMonth: r.dayOfMonth, note: r.note, active: !r.active,
+      dayOfMonth: r.dayOfMonth, note: r.note, active: !r.active, autoPost: r.autoPost,
     })
   }
 
@@ -31,7 +33,7 @@ export function RecurringPage() {
       <div className="page-head">
         <div>
           <h1>Recurring</h1>
-          <div className="sub">Logged for you on the day, every month</div>
+          <div className="sub">Every month on the day: logged by itself, or waiting for your seal</div>
         </div>
         <button className="primary" onClick={() => setEditing('new')}><IconPlus size={18} aria-hidden="true" /> Add recurring</button>
       </div>
@@ -52,17 +54,27 @@ export function RecurringPage() {
         )}
         <div className="list">
           {list.map((r) => (
-            <div key={r.id} className="list-row" style={{ opacity: r.active ? 1 : 0.55 }}>
+            <div key={r.id} className={`list-row ${r.awaitingConfirmation ? 'awaiting' : ''}`} style={{ opacity: r.active ? 1 : 0.55 }}>
               <CategoryIcon icon={r.category.icon} color={r.category.color} />
               <div className="grow">
                 <div className="title">{r.note || r.category.name}</div>
                 <div className="small muted">
-                  Day {r.dayOfMonth} · {r.account.name} · {r.active ? `next ${dayLabel(r.nextRunOn)}` : 'paused'}
+                  Day {r.dayOfMonth} · {r.account.name} ·{' '}
+                  {!r.active ? 'paused' : r.awaitingConfirmation ? <span className="gold">due {dayLabel(r.nextRunOn)}, awaiting your seal</span> : `next ${dayLabel(r.nextRunOn)}`}
                 </div>
               </div>
+              <span className="chip" title={r.autoPost ? 'Logs itself on the day' : 'Waits for you to confirm it'}>
+                {r.autoPost ? <IconBolt size={13} aria-hidden="true" /> : <IconHandFinger size={13} aria-hidden="true" />}
+                {r.autoPost ? 'Auto' : 'Confirm'}
+              </span>
               <span className={`num ${r.type === 'INCOME' ? 'pos' : ''}`}>
                 {r.type === 'INCOME' ? '+' : '−'}<Money value={r.amount} />
               </span>
+              {r.awaitingConfirmation && (
+                <button className="primary" onClick={() => setSealing(r)}>
+                  <IconRosetteDiscountCheck size={16} aria-hidden="true" /> Confirm
+                </button>
+              )}
               <button className="ghost" aria-label={r.active ? 'Pause' : 'Resume'} onClick={() => toggle(r)}>
                 {r.active ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />}
               </button>
@@ -77,6 +89,7 @@ export function RecurringPage() {
       </Panel>
 
       {editing && <RuleForm rule={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
+      {sealing && <SealDialog rule={sealing} onClose={() => setSealing(null)} />}
     </>
   )
 }
@@ -93,6 +106,7 @@ function RuleForm({ rule, onClose }: { rule?: Rule; onClose: () => void }) {
   const [accountId, setAccountId] = useState<number | ''>(rule?.account.id ?? '')
   const [categoryId, setCategoryId] = useState<number | ''>(rule?.category.id ?? '')
   const [note, setNote] = useState(rule?.note ?? '')
+  const [autoPost, setAutoPost] = useState(rule?.autoPost ?? true)
   const [problem, setProblem] = useState<string | null>(null)
 
   const choices = categories.filter((c) => c.kind === type)
@@ -108,7 +122,7 @@ function RuleForm({ rule, onClose }: { rule?: Rule; onClose: () => void }) {
     setProblem(null)
     save.mutate({
       id: rule?.id, type, amount: money(amount), accountId: Number(account), categoryId: Number(category),
-      dayOfMonth: d, startOn: rule ? undefined : startOn, note, active: rule?.active ?? true,
+      dayOfMonth: d, startOn: rule ? undefined : startOn, note, active: rule?.active ?? true, autoPost,
     }, { onSuccess: onClose })
   }
 
@@ -139,7 +153,23 @@ function RuleForm({ rule, onClose }: { rule?: Rule; onClose: () => void }) {
             </select>
           </Field>
         </div>
-        <p className="small muted" style={{ margin: 0 }}>Days 29 to 31 fall on the last day of shorter months.</p>
+        <div className="stack" style={{ gap: 4 }}>
+          <span className="small muted">On the day</span>
+          <div className="segmented" role="group" aria-label="On the day">
+            <button type="button" aria-pressed={autoPost} onClick={() => setAutoPost(true)}>
+              <IconBolt size={15} aria-hidden="true" /> Log it by itself
+            </button>
+            <button type="button" aria-pressed={!autoPost} onClick={() => setAutoPost(false)}>
+              <IconHandFinger size={15} aria-hidden="true" /> Wait for my confirm
+            </button>
+          </div>
+        </div>
+        <p className="small muted" style={{ margin: 0 }}>
+          {autoPost
+            ? 'Fixed amounts like salary or rent: logged for you, no tap needed.'
+            : 'Bills that vary, or ones you want to check: it waits in the Hall until you confirm the amount or skip it.'}
+          {' '}Days 29 to 31 fall on the last day of shorter months.
+        </p>
         {problem && <p className="field-error" role="alert">{problem}</p>}
         <ErrorLine error={save.error} />
         <div className="row"><span /><button type="submit" className="primary" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button></div>

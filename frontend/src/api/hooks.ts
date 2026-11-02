@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
+import { today } from '../lib/format'
 import type {
   Account,
   Category,
   CharacterSheet,
+  Debt,
+  DebtDirection,
   Device,
   Entry,
   EntryRequest,
@@ -238,6 +241,7 @@ export type RuleInput = {
   startOn?: string
   note: string
   active?: boolean
+  autoPost?: boolean
 }
 
 export function useSaveRule() {
@@ -248,6 +252,26 @@ export function useSaveRule() {
         ? api<Rule>(`/api/recurring/${id}`, { method: 'PUT', json: body })
         : api<Rule>('/api/recurring', { method: 'POST', json: body }),
     onSuccess: invalidate,
+  })
+}
+
+// Confirming books an entry (and earns XP); skipping only moves the rule on.
+// Both send the date you saw as due, so a double tap can't book next month's.
+export function useConfirmRule() {
+  const invalidate = useInvalidateMoney()
+  return useMutation({
+    mutationFn: ({ id, on, amount }: { id: number; on: string; amount?: string }) =>
+      api<Rule>(`/api/recurring/${id}/confirm`, { method: 'POST', json: { on, amount } }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSkipRule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, on }: { id: number; on: string }) =>
+      api<Rule>(`/api/recurring/${id}/skip`, { method: 'POST', json: { on } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recurring'] }),
   })
 }
 
@@ -303,6 +327,64 @@ export function useTavernImport() {
   return useMutation({
     mutationFn: (payload: unknown) => api<ImportResult>('/api/import/tavern', { method: 'POST', json: payload }),
     onSuccess: () => qc.invalidateQueries(),
+  })
+}
+
+// ---------------- debts ----------------
+
+export const useDebts = () => useQuery({ queryKey: ['debts'], queryFn: () => api<Debt[]>('/api/debts') })
+
+export type DebtInput = {
+  direction: DebtDirection
+  person: string
+  amount: string
+  note: string
+  startedOn?: string
+  dueOn: string | null
+}
+
+// Ticking a debt off can earn XP and a badge, so the Hall refreshes too.
+function useInvalidateDebts() {
+  const qc = useQueryClient()
+  return () =>
+    Promise.all([qc.invalidateQueries({ queryKey: ['debts'] }), qc.invalidateQueries({ queryKey: ['character'] })])
+}
+
+export function useSaveDebt() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: ({ id, ...body }: DebtInput & { id?: number }) =>
+      id
+        ? api<Debt>(`/api/debts/${id}`, { method: 'PUT', json: body })
+        : api<Debt>('/api/debts', { method: 'POST', json: body }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteDebt() {
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: (id: number) => api(`/api/debts/${id}`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  })
+}
+
+/** Tick a debt off as settled, or untick it. Shown at once, rolled back if the server says no. */
+export function useTickDebt() {
+  const qc = useQueryClient()
+  const invalidate = useInvalidateDebts()
+  return useMutation({
+    mutationFn: ({ id, settled }: { id: number; settled: boolean }) =>
+      api<Debt>(`/api/debts/${id}/${settled ? 'settle' : 'reopen'}`, { method: 'POST' }),
+    onMutate: async ({ id, settled }) => {
+      await qc.cancelQueries({ queryKey: ['debts'] })
+      const before = qc.getQueriesData<Debt[]>({ queryKey: ['debts'] })
+      qc.setQueriesData<Debt[]>({ queryKey: ['debts'] }, (old) =>
+        old?.map((d) => (d.id === id ? { ...d, settledOn: settled ? today() : null } : d)))
+      return { before }
+    },
+    onError: (_error, _vars, ctx) => ctx?.before.forEach(([key, data]) => qc.setQueryData(key, data)),
+    onSettled: invalidate,
   })
 }
 

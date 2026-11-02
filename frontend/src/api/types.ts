@@ -105,6 +105,23 @@ export type Rule = {
   dayOfMonth: number
   nextRunOn: string
   active: boolean
+  /** true: logs itself on the day. false: waits for you to confirm or skip it. */
+  autoPost: boolean
+  awaitingConfirmation: boolean
+}
+
+export type DebtDirection = 'THEY_OWE' | 'I_OWE'
+export type Debt = {
+  id: number
+  direction: DebtDirection
+  person: string
+  amount: number
+  note: string
+  startedOn: string
+  dueOn: string | null
+  /** Set once ticked off; null while still owed. */
+  settledOn: string | null
+  overdue: boolean
 }
 
 export type Quest = {

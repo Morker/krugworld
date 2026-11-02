@@ -4,7 +4,9 @@ KrugWorld is the successor to **Krugger's Tavern** (an older single-file app): a
 personal life app styled as an RPG character sheet. Money, calendar, meals, training and
 ideas all earn XP; the AI helper **Gaby** can act on all of it.
 
-Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
+Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md` and `docs/OPERATIONS.md`.
+Full docs (features, architecture, database, API, Gaby, development): `docs/README.md`.
+Release only code that is pushed to GitHub, and number new migrations above production's latest.
 
 ## Working with the owner
 
@@ -18,12 +20,12 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 ## Stack and layout
 
 - `backend/` — Spring Boot 3.3 (Java 17), Spring Data JPA + JdbcTemplate for aggregates,
-  Spring Security, Flyway (`db/migration/V1..V11`), Testcontainers 1.21.4 (pinned: older
+  Spring Security, Flyway (`db/migration/V1..V13`), Testcontainers 1.21.4 (pinned: older
   versions fail against Docker 29).
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
 - Packages: `auth`, `ledger`, `budget`, `recurring`, `quest`, `game`, `calendar`,
-  `workshop`, `vitals`, `life`, `steward`, `device`, `push`, `importer`, `admin`, `web`, `common`.
+  `workshop`, `vitals`, `life`, `debt`, `steward`, `device`, `push`, `importer`, `admin`, `web`, `common`.
 - Two security chains: `/api/device/**` is stateless bearer-token only (`DeviceTokenFilter`,
   `ROLE_DEVICE`, principal `DevicePrincipal`); everything else is the browser chain
   (session + remember-me + CSRF, principal `CurrentUser`). Device API: `docs/DEVICE-API.md`.
@@ -56,6 +58,14 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
   (see DEPLOY.md) and checked in the database on every `/api/admin/**` call, never kept in the
   session. Admin writes reuse `LedgerService`, earn no XP, and write `admin_audit` in the same
   transaction. Setting a total moves `opening_balance`; balances stay computed.
+- Recurring rules have `auto_post` (V11): true books itself nightly; false waits ("awaiting your
+  seal") until the user confirms (`POST /api/recurring/{id}/confirm {on, amount?}`, earns entry XP)
+  or skips it. `on` must equal `next_run_on` and the row is locked, so a double tap gets 409.
+- Debts (V12 + V13, `debt` package): one `debt` row each way (`THEY_OWE` / `I_OWE`), no partial
+  repayments (V13 dropped `debt_payment`). Ticking it off (`POST /api/debts/{id}/settle`) sets
+  `settled_on`, +10 XP once ("Clean slate"); `/reopen` unticks. Gaby has `list_debts` / `add_debt` /
+  `settle_debt`. Push reminders in `Reminders.debts`: day before due, on the day, weekly when 7+ days
+  overdue, every 30 days if undated; 9 am-10 pm only.
 - Tests: `IntegrationTest` base boots the app against Testcontainers Postgres with the
   scheduler off and the Steward on a scripted `FakeChatProvider` (no network, no cost).
 
@@ -64,7 +74,7 @@ Setup on a new machine: see `docs/SETUP-NEW-PC.md`. Deploying: `DEPLOY.md`.
 - **Layout:** RPG character sheet — balance = HP bar, budgets = mana, savings goals =
   quests, badges, streak flames, entries = "loot log". The Hall fits one laptop screen
   (1366×657 and up) with the Gaby dock closed.
-- **Navigation groups:** Hall · Finance (Ledger, Budgets, Quests, Recurring, Accounts) ·
+- **Navigation groups:** Hall · Finance (Ledger, Budgets, Quests, Recurring, Debts, Accounts) ·
   Life (Calendar, Vitals, Workshop) · Arcane (Steward, Oracle's Eye) · Settings.
 - **Skins:** *Classic Krugger* must stay exactly like the old Tavern (Press Start 2P +
   VT323, teal stone, square chunky borders, scanlines). The new skin uses **Pirata One +

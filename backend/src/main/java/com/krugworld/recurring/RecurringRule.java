@@ -50,6 +50,10 @@ public class RecurringRule {
     @Column(nullable = false)
     private boolean active = true;
 
+    /** False: each occurrence waits for the user to confirm or skip it. */
+    @Column(name = "auto_post", nullable = false)
+    private boolean autoPost = true;
+
     protected RecurringRule() {
     }
 
@@ -142,5 +146,18 @@ public class RecurringRule {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public boolean isAutoPost() {
+        return autoPost;
+    }
+
+    public void setAutoPost(boolean autoPost) {
+        this.autoPost = autoPost;
+    }
+
+    /** A confirm-it-yourself rule whose day has come. */
+    public boolean isAwaitingConfirmation(LocalDate today) {
+        return active && !autoPost && !nextRunOn.isAfter(today);
     }
 }

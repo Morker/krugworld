@@ -223,9 +223,37 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
 }
 .badge.locked { border-style: dashed; border-color: var(--line); color: var(--line); background: transparent; }
 
-.flames { display: flex; justify-content: space-between; }
-.flames .lit { color: var(--hp); }
-.flames .unlit { color: var(--line); }
+/* The streak: one flame perched on the portrait, its day count inside it. */
+.avatar-wrap { position: relative; width: 92px; margin: 2px auto 0; }
+.avatar-wrap .avatar-ring { margin: 0; }
+.streak-flame {
+  position: absolute; right: -22px; top: -8px;
+  width: 34px; height: 42px; display: grid; place-items: center;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+.streak-flame svg { position: absolute; inset: 0; overflow: visible; transform-origin: 50% 95%; }
+.streak-flame .flame-stop-a { stop-color: var(--hp); }
+.streak-flame .flame-stop-b { stop-color: var(--accent); }
+.streak-flame .flame-core { fill: var(--accent); opacity: 0.9; }
+.streak-count {
+  position: relative; margin-top: 15px;
+  font-size: 13px; line-height: 1; color: var(--on-accent);
+}
+.streak-flame.lit svg { animation: flicker 2.4s ease-in-out infinite; }
+.streak-flame.lit { filter: drop-shadow(0 0 6px var(--hp)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45)); }
+/* Alive but not fed today: burns low and breathes, asking for attention. */
+.streak-flame.low svg { animation: breathe 2.8s ease-in-out infinite; opacity: 0.7; }
+.streak-flame.cold .flame-stop-a, .streak-flame.cold .flame-stop-b { stop-color: var(--line); }
+.streak-flame.cold .flame-core { fill: var(--track); }
+.streak-flame.cold .streak-count { color: var(--muted); }
+@keyframes flicker {
+  0%, 100% { transform: scale(1, 1) rotate(0deg); }
+  30% { transform: scale(0.97, 1.05) rotate(-2deg); }
+  60% { transform: scale(1.02, 0.97) rotate(1.5deg); }
+}
+@keyframes breathe { 50% { transform: scale(0.92); opacity: 0.5; } }
+:root[data-skin='classic'] .streak-flame svg { shape-rendering: crispEdges; }
+:root[data-skin='classic'] .streak-count { font-family: var(--font-display); font-size: 8px; margin-top: 17px; }
 
 .empty { text-align: center; padding: 20px 10px; color: var(--muted); }
 .empty .btn, .empty button { margin-top: 10px; }
@@ -247,7 +275,7 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
 }
 @keyframes glint { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .skeleton-line { animation: none; }
+  .skeleton-line, .streak-flame svg { animation: none !important; }
 }
 
 .page-error { text-align: center; padding: 30px 10px; }
@@ -287,16 +315,40 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
 :root[data-skin='classic'] .nav-group-label { font-size: 9px; padding-top: 8px; }
 .nav-group-tab, .subnav { display: none; }
 
-/* ---------- the Hall: three columns on laptops, two on medium, one on phones ---------- */
+/* ---------- the Hall ----------
+   Phones: one column. Medium: the purse (vitals + debts, half each) across the
+   top, then the hero beside today and the loot log. Laptops: hero | purse over
+   today | loot. The hero spans rows; the last row soaks up its extra height so
+   nothing beside it gets a gap underneath. */
 
-.hall { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.hall {
+  display: grid; gap: 12px; align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "hero" "realm" "deeds" "chronicle";
+}
+.hall-hero { grid-area: hero; }
+.hall-realm { grid-area: realm; container: realm / inline-size; }
+.hall-deeds { grid-area: deeds; }
+.hall-chronicle { grid-area: chronicle; min-width: 0; }
+.realm-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+@container realm (min-width: 520px) {
+  .realm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @container main (min-width: 700px) {
-  .hall { grid-template-columns: 230px minmax(0, 1fr); }
-  .hall-today { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Not enough width for hero + both purse panels in one row: the purse takes
+     the top row (vitals and debts still half each), the hero sits under it. */
+  .hall {
+    grid-template-columns: 230px minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "realm realm" "hero deeds" "hero chronicle";
+  }
 }
 @container main (min-width: 1040px) {
-  .hall { grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1fr); }
-  .hall-today { grid-column: auto; display: flex; }
+  .hall {
+    grid-template-columns: 240px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "hero realm realm" "hero deeds chronicle";
+  }
 }
 
 .head-widgets { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
@@ -306,10 +358,43 @@ label.field { display: flex; flex-direction: column; gap: 4px; font-size: var(--
   background: var(--panel); border: var(--border-w) solid var(--line);
   color: var(--text); text-decoration: none; max-width: 260px;
 }
-.mini-divider { width: 1px; align-self: stretch; background: var(--line); }
 .ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .today-label { margin: 8px 0 2px; font-size: var(--fs-small); color: var(--muted); }
 .today-tick { width: 100%; justify-content: flex-start; padding: 3px 4px; }
+
+/* Recurring entries waiting for a tap: a wax-seal button. */
+.seal-panel { border-color: var(--accent); }
+.seal-btn {
+  width: 34px; height: 34px; padding: 0; justify-content: center; flex: 0 0 34px;
+  border-radius: 50%; border-color: var(--accent); color: var(--accent);
+}
+.seal-btn:hover { background: var(--accent); color: var(--on-accent); }
+:root[data-skin='classic'] .seal-btn { border-radius: 0; }
+.list-row.awaiting { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%); }
+
+/* Debts: who's on the hook, and the tug between owed and owing. */
+.tug {
+  height: 8px; margin: 4px 0 8px; overflow: hidden;
+  border-radius: var(--radius); border: var(--border-w) solid var(--line);
+  background: var(--hp);
+}
+.tug > div { height: 100%; background: var(--ok); border-right: 2px solid var(--bg); transition: width 0.4s ease; }
+.debt-face {
+  width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center;
+  border-radius: 50%; border: 2px solid var(--line); background: var(--panel-2);
+  font-family: var(--font-display); color: var(--heading);
+}
+.debt-face.small-face { width: 24px; height: 24px; flex-basis: 24px; border-width: 1.5px; font-size: 0.85em; }
+:root[data-skin='classic'] .debt-face { border-radius: 0; font-size: 10px; }
+.debt-card {
+  background: var(--panel-2); border: var(--border-w) solid var(--line);
+  border-radius: var(--radius); padding: 10px 12px;
+}
+.debt-card .title { font-weight: 600; }
+.debt-card.overdue { border-color: var(--hp); }
+.debt-tick { flex: none; padding: 4px; }
+.debt-tick:hover svg { color: var(--ok); }
+details.settled summary { cursor: pointer; list-style-position: inside; }
 
 /* ---------- calendar ---------- */
 

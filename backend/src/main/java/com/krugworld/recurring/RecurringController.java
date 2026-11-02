@@ -1,8 +1,10 @@
 package com.krugworld.recurring;
 
 import com.krugworld.auth.CurrentUser;
+import com.krugworld.recurring.RecurringService.ConfirmRequest;
 import com.krugworld.recurring.RecurringService.RuleRequest;
 import com.krugworld.recurring.RecurringService.RuleView;
+import com.krugworld.recurring.RecurringService.SkipRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -43,6 +45,20 @@ public class RecurringController {
     public RuleView update(@AuthenticationPrincipal CurrentUser me, @PathVariable Long id,
                            @Valid @RequestBody RuleRequest body) {
         return recurring.update(me.id(), id, body);
+    }
+
+    /** Book the occurrence that's awaiting confirmation. */
+    @PostMapping("/{id}/confirm")
+    public RuleView confirm(@AuthenticationPrincipal CurrentUser me, @PathVariable Long id,
+                            @Valid @RequestBody ConfirmRequest body) {
+        return recurring.confirm(me.id(), id, body);
+    }
+
+    /** Let the awaiting occurrence pass without booking it. */
+    @PostMapping("/{id}/skip")
+    public RuleView skip(@AuthenticationPrincipal CurrentUser me, @PathVariable Long id,
+                         @Valid @RequestBody SkipRequest body) {
+        return recurring.skip(me.id(), id, body);
     }
 
     @DeleteMapping("/{id}")

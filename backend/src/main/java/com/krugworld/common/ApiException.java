@@ -25,6 +25,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.BAD_REQUEST, code, message);
     }
 
+    /** The request was fine but the thing has moved on, e.g. it was already confirmed. */
+    public static ApiException conflict(String code, String message) {
+        return new ApiException(HttpStatus.CONFLICT, code, message);
+    }
+
     public HttpStatus getStatus() {
         return status;
     }
