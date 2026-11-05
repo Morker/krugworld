@@ -116,7 +116,7 @@ function EmailSettings() {
 
 function SkinOption({ active, title, text, onClick }: { active: boolean; title: string; text: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} aria-pressed={active}
+    <button className="tile" onClick={onClick} aria-pressed={active}
             style={{ textAlign: 'left', justifyContent: 'space-between', borderColor: active ? 'var(--accent)' : undefined }}>
       <span>
         <span className="display" style={{ display: 'block', fontSize: 'var(--fs-h2)' }}>{title}</span>

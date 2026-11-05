@@ -584,6 +584,28 @@ details.settled summary { cursor: pointer; list-style-position: inside; }
   border-color: transparent; box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 :root[data-skin='mirage'] button.ghost { box-shadow: none; }
+/* Tile-shaped buttons (calendar days, skin choices) are cards, not pills. */
+:root[data-skin='mirage'] .cal-day,
+:root[data-skin='mirage'] button.tile { border-radius: 14px; }
+:root[data-skin='mirage'] .cal-grid { gap: 6px; }
+:root[data-skin='mirage'] .cal-day {
+  padding: 7px 9px;
+  background: color-mix(in srgb, var(--g1) 45%, transparent);
+  border-color: var(--line);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+:root[data-skin='mirage'] .cal-day:hover { background: color-mix(in srgb, var(--g2) 28%, transparent); }
+:root[data-skin='mirage'] .cal-day .n { font-size: 13px; }
+:root[data-skin='mirage'] .cal-day.other { opacity: 0.35; background: transparent; }
+:root[data-skin='mirage'] .cal-day.today { border-color: var(--accent); }
+:root[data-skin='mirage'] .cal-day.today .n {
+  display: inline-grid; place-items: center; min-width: 24px; height: 24px; margin: -3px 0 0 -4px;
+  border-radius: 999px; background: var(--accent-fill); color: var(--on-accent);
+}
+:root[data-skin='mirage'] .cal-day.selected {
+  background: var(--panel-2-fill); border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 20px color-mix(in srgb, var(--accent) 18%, transparent);
+}
 :root[data-skin='mirage'] input,
 :root[data-skin='mirage'] select,
 :root[data-skin='mirage'] textarea { border-radius: 12px; }
