@@ -2,8 +2,8 @@
 // numbers (BigDecimal) and is sent back as strings with two decimals, so no
 // floating-point rounding ever reaches the database.
 
-export type Skin = 'classic' | 'modern'
-export type Theme = 'steel' | 'oak' | 'forest' | 'parchment'
+export type Skin = 'classic' | 'modern' | 'mirage'
+export type Theme = 'steel' | 'oak' | 'forest' | 'parchment' | 'navy' | 'ocean' | 'dusk' | 'rose'
 
 export type WeatherPlace = { place: string; lat: number; lon: number }
 export type Me = {

@@ -21,6 +21,13 @@
       "autoPort": false
     },
     {
+      "name": "backend-preview-db",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5434/krugworld_preview&& cd backend && .\\mvnw.cmd spring-boot:run"],
+      "port": 8085,
+      "autoPort": false
+    },
+    {
       "name": "frontend-build-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "preview", "--", "--port", "4173", "--strictPort"],

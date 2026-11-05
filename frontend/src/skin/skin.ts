@@ -36,9 +36,27 @@ export function useAccountSkin(me: Me | null | undefined) {
   }, [me])
 }
 
-export const THEMES: { id: Theme; name: string; swatch: string }[] = [
-  { id: 'steel', name: "Knight's steel", swatch: '#151a22' },
-  { id: 'oak', name: 'Tavern oak', swatch: '#1b1410' },
-  { id: 'forest', name: "Ranger's forest", swatch: '#0f1c17' },
-  { id: 'parchment', name: 'Parchment', swatch: '#f3ead6' },
-]
+export type ThemeOption = { id: Theme; name: string; swatch: string }
+
+// Each skin has its own backgrounds; classic has one look and ignores the theme.
+export const SKIN_THEMES: Record<Skin, ThemeOption[]> = {
+  classic: [],
+  modern: [
+    { id: 'steel', name: "Knight's steel", swatch: '#151a22' },
+    { id: 'oak', name: 'Tavern oak', swatch: '#1b1410' },
+    { id: 'forest', name: "Ranger's forest", swatch: '#0f1c17' },
+    { id: 'parchment', name: 'Parchment', swatch: '#f3ead6' },
+  ],
+  mirage: [
+    { id: 'navy', name: 'Navy mirage', swatch: 'linear-gradient(135deg, #141e30, #35577d)' },
+    { id: 'ocean', name: 'Deep ocean', swatch: 'linear-gradient(135deg, #0f2027, #2c5364)' },
+    { id: 'dusk', name: 'Royal dusk', swatch: 'linear-gradient(135deg, #1b1a38, #5a3f8c)' },
+    { id: 'rose', name: 'Midnight rose', swatch: 'linear-gradient(135deg, #21131f, #7a3a5a)' },
+  ],
+}
+
+/** The theme to wear in `skin`: the current one if that skin has it, else the skin's first. */
+export function themeFor(skin: Skin, current: Theme): Theme {
+  const options = SKIN_THEMES[skin]
+  return options.length === 0 || options.some((t) => t.id === current) ? current : options[0].id
+}

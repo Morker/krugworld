@@ -105,6 +105,19 @@ class AuthIntegrationTest extends IntegrationTest {
     }
 
     @Test
+    void theMirageSkinAndItsBackgroundsCanBeSaved() throws Exception {
+        CurrentUser me = newUser();
+        // Saving proves the database's CHECK constraints accept them too (V15), not just the validation.
+        patchAs(me, "/api/auth/me/preferences", Map.of("skin", "mirage", "theme", "navy"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skin").value("mirage"))
+                .andExpect(jsonPath("$.theme").value("navy"));
+        patchAs(me, "/api/auth/me/preferences", Map.of("theme", "rose"))
+                .andExpect(jsonPath("$.theme").value("rose"));
+        getAs(me, "/api/auth/me").andExpect(jsonPath("$.skin").value("mirage"));
+    }
+
+    @Test
     void logoutClearsTheRememberMeCookie() throws Exception {
         mvc.perform(post("/api/auth/logout").with(csrf()))
                 .andExpect(status().isNoContent())

@@ -20,7 +20,7 @@ Release only code that is pushed to GitHub, and number new migrations above prod
 ## Stack and layout
 
 - `backend/` — Spring Boot 3.3 (Java 17), Spring Data JPA + JdbcTemplate for aggregates,
-  Spring Security, Flyway (`db/migration/V1..V14`), Testcontainers 1.21.4 (pinned: older
+  Spring Security, Flyway (`db/migration/V1..V15`), Testcontainers 1.21.4 (pinned: older
   versions fail against Docker 29).
 - `frontend/` — React 19 + TypeScript + Vite 8, React Query, react-router, Tabler icons.
 - `deploy/` — runtime Dockerfile, production compose, nginx site, `redeploy.sh`.
@@ -79,6 +79,11 @@ Release only code that is pushed to GitHub, and number new migrations above prod
 - **Skins:** *Classic Krugger* must stay exactly like the old Tavern (Press Start 2P +
   VT323, teal stone, square chunky borders, scanlines). The new skin uses **Pirata One +
   Barlow Condensed**, four backgrounds, **Knight's steel** (`#151a22`) default.
+  A third skin, **Mirage** (`mirage`, V15), is the modern non-pixel option: gradient page
+  background, glass panels, pill buttons, Plus Jakarta Sans. Its backgrounds are driven by two
+  colour stops (`--g1`/`--g2`): **navy** ("Navy Mirage", `#141E30`→`#35577D`, default), ocean,
+  dusk, rose. Surfaces paint with `--panel-fill` / `--sidebar-fill` / `--accent-fill`
+  (solid in the other skins, gradients in mirage); each skin's backgrounds are in `SKIN_THEMES`.
 - **Gaby** (was "Barnaby"): female pixel-art steward (`frontend/src/steward/Portrait.tsx`),
   same family as before — burgundy cap + gold feather, gold spectacles, teal coat — with
   auburn braids. Docks in the right column on wide screens. Understands **English and Malay**
