@@ -7,6 +7,7 @@
 
 #include "audio.h"
 #include "secrets.h"
+#include "wlan.h"
 
 namespace net {
 
@@ -21,6 +22,13 @@ QueueHandle_t jobs;
 QueueHandle_t updates;
 Preferences prefs;  // NVS flash: survives reboots and reflashing the app
 char token[96] = "";
+// No known network answered, so the picker is up: wait for the user's choice
+// instead of retrying (which would steal the radio from their scan or join).
+bool pickerOpen = false;
+uint32_t lastWifiJobAt = 0;
+// Left alone this long, the picker retries the saved networks itself: after a
+// power cut the router often boots slower than Gaby.
+constexpr uint32_t PICKER_IDLE_RETRY_MS = 90 * 1000;
 
 void send(UpdateType type, const char *text = "", const api::Summary *summary = nullptr, const char *heard = "") {
   // Static: an Update carries a whole Summary, too big for the task's stack.
@@ -60,19 +68,8 @@ void checkDns() {
                 found ? ("found " + ip.toString()).c_str() : "couldn't either");
 }
 
-bool ensureWifi() {
-  if (WiFi.status() == WL_CONNECTED) return true;
-  send(UpdateType::Connecting, WIFI_SSID);
-  WiFi.mode(WIFI_STA);
-  WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) {
-    delay(250);
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    send(UpdateType::Offline, "No Wi-Fi. Check include/secrets.h.");
-    return false;
-  }
+/** Once a network is up, whichever it is: DNS check and the clock. */
+void online() {
   Serial.printf("[net] Wi-Fi up, IP %s\n", WiFi.localIP().toString().c_str());
   checkDns();
   configTzTime(TIMEZONE, "pool.ntp.org", "time.google.com");
@@ -80,7 +77,28 @@ bool ensureWifi() {
   // every boot: wait for the real time before the first request.
   for (int i = 0; i < 60 && time(nullptr) < 1700000000; i++) delay(250);
   if (time(nullptr) < 1700000000) Serial.println("[net] clock not set yet; HTTPS may fail until it is");
+}
+
+bool ensureWifi() {
+  if (WiFi.status() == WL_CONNECTED) return true;
+  if (pickerOpen) return false;  // the user is choosing one; don't fight them for the radio
+  bool joined = wlan::connectKnown([](const char *ssid) { send(UpdateType::Connecting, ssid); });
+  send(UpdateType::WifiList);
+  if (!joined) {
+    pickerOpen = true;
+    send(UpdateType::WifiNeeded);
+    return false;
+  }
+  online();
   return true;
+}
+
+/** Back on Wi-Fi after the picker: carry on where a fresh boot would. */
+void afterJoin(const char *ssid) {
+  pickerOpen = false;
+  online();
+  send(UpdateType::WifiList);
+  send(UpdateType::WifiJoined, ssid);
 }
 
 void forgetToken() {
@@ -148,7 +166,59 @@ void talk(const Job &job) {
   refresh();  // she may have logged money, a meal, an event...
 }
 
+/** What a fresh boot does once it's online: the glance screen, or pairing. */
+void resume() {
+  if (token[0]) {
+    refresh();
+  } else {
+    send(UpdateType::NeedsPairing);
+  }
+}
+
+void joinWifi(const Job &job) {
+  bool wasOnline = WiFi.status() == WL_CONNECTED;
+  send(UpdateType::WifiJoining, job.ssid);
+  char why[120];
+  if (wlan::join(job.ssid, job.password, job.saved, why, sizeof(why))) {
+    afterJoin(job.ssid);
+    resume();
+    return;
+  }
+  send(UpdateType::WifiFailed, why);
+  // Trying a new network dropped the old one: get it back if it's still there.
+  if (wasOnline) {
+    if (wlan::connectKnown(nullptr)) {
+      online();
+    } else {
+      pickerOpen = true;
+    }
+    send(UpdateType::WifiList);
+  }
+}
+
+/** The Wi-Fi jobs come from the picker, so they run without a connection. */
+bool handleWifi(const Job &job) {
+  switch (job.type) {
+    case JobType::ScanWifi:
+      lastWifiJobAt = millis();
+      wlan::scan();
+      send(UpdateType::WifiList);
+      return true;
+    case JobType::JoinWifi:
+      lastWifiJobAt = millis();
+      joinWifi(job);
+      return true;
+    case JobType::ForgetWifi:
+      wlan::forget(job.ssid);
+      send(UpdateType::WifiList);
+      return true;
+    default:
+      return false;
+  }
+}
+
 void handle(const Job &job) {
+  if (handleWifi(job)) return;
   if (!ensureWifi()) return;
   switch (job.type) {
     case JobType::Pair: {
@@ -181,6 +251,8 @@ void handle(const Job &job) {
     case JobType::Voice:
       if (token[0]) talk(job);
       break;
+    default:  // the Wi-Fi jobs, handled above
+      break;
   }
 }
 
@@ -189,19 +261,20 @@ void run(void *) {
   if (prefs.isKey("token")) prefs.getString("token", token, sizeof(token));
   api::setBaseUrl(KRUGWORLD_URL);
 
-  if (ensureWifi()) {
-    if (token[0]) {
-      refresh();
-    } else {
-      send(UpdateType::NeedsPairing);
-    }
-  }
+  if (ensureWifi()) resume();
 
   Job job;
   for (;;) {
     // Wait for work, but wake up on the minute to refresh anyway.
     if (xQueueReceive(jobs, &job, pdMS_TO_TICKS(REFRESH_MS)) == pdTRUE) {
       handle(job);
+      memset(job.password, 0, sizeof(job.password));
+    } else if (pickerOpen) {
+      // Quietly, so the picker stays put unless one of them really answers.
+      if (millis() - lastWifiJobAt > PICKER_IDLE_RETRY_MS && wlan::connectKnown(nullptr)) {
+        afterJoin(WiFi.SSID().c_str());
+        resume();
+      }
     } else if (ensureWifi() && token[0]) {
       refresh();
     }
@@ -211,6 +284,7 @@ void run(void *) {
 }  // namespace
 
 void start() {
+  wlan::begin();
   jobs = xQueueCreate(8, sizeof(Job));
   updates = xQueueCreate(4, sizeof(Update));
   // Core 0, beside Wi-Fi itself; Arduino's loop() and LVGL run on core 1.

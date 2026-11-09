@@ -50,6 +50,11 @@ void loop() {
       case net::UpdateType::VoiceSpeaking: ui::voiceSpeaking(); break;
       case net::UpdateType::VoiceDone: ui::voiceDone(); break;
       case net::UpdateType::VoiceFailed: ui::voiceFailed(update.text); break;
+      case net::UpdateType::WifiList: ui::wifiListChanged(); break;
+      case net::UpdateType::WifiNeeded: ui::showWifi(); break;
+      case net::UpdateType::WifiJoining: ui::wifiJoining(update.text); break;
+      case net::UpdateType::WifiJoined: ui::wifiJoined(update.text); break;
+      case net::UpdateType::WifiFailed: ui::wifiFailed(update.text); break;
     }
   }
 

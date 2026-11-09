@@ -11,7 +11,12 @@
  */
 namespace net {
 
-enum class JobType { Pair, Refresh, SetWorkoutDone, Forget, Voice };
+enum class JobType {
+  Pair, Refresh, SetWorkoutDone, Forget, Voice,
+  ScanWifi,    // look around; answers with WifiList
+  JoinWifi,    // ssid + password (or saved = use the stored one)
+  ForgetWifi,  // ssid
+};
 
 struct Job {
   JobType type;
@@ -20,6 +25,9 @@ struct Job {
   bool done;           // SetWorkoutDone
   const uint8_t *wav;  // Voice: the clip, owned by the audio module
   size_t wavSize;
+  char ssid[33];       // JoinWifi, ForgetWifi
+  char password[65];   // JoinWifi; wiped once used
+  bool saved;          // JoinWifi: Gaby already knows the password
 };
 
 enum class UpdateType {
@@ -35,6 +43,11 @@ enum class UpdateType {
   VoiceSpeaking, // her voice is coming out of the speaker
   VoiceDone,     // finished talking
   VoiceFailed,   // text = why
+  WifiList,      // a fresh scan or saved list: read wlan::visible() / wlan::saved()
+  WifiNeeded,    // no known network answered: show the picker
+  WifiJoining,   // text = SSID
+  WifiJoined,    // text = SSID
+  WifiFailed,    // text = why (never the password)
 };
 
 struct Update {
@@ -44,7 +57,7 @@ struct Update {
   api::Summary summary;
 };
 
-/** Starts the task: connects Wi-Fi, syncs the clock, loads the saved token. */
+/** Starts the task: connects Wi-Fi (saved networks first), syncs the clock, loads the saved token. */
 void start();
 
 /** Queue work for the network task. Never blocks the caller. */

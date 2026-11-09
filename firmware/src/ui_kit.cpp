@@ -6,6 +6,13 @@
 
 namespace kit {
 
+lv_obj_t *screen() {
+  lv_obj_t *s = lv_obj_create(nullptr);
+  lv_obj_set_style_bg_color(s, theme::bg(), 0);
+  lv_obj_remove_flag(s, LV_OBJ_FLAG_SCROLLABLE);
+  return s;
+}
+
 lv_obj_t *label(lv_obj_t *parent, const lv_font_t *font, lv_color_t colour, const char *text) {
   lv_obj_t *l = lv_label_create(parent);
   lv_obj_set_style_text_font(l, font, 0);

@@ -10,6 +10,7 @@
 #include "pages.h"
 #include "theme.h"
 #include "ui_kit.h"
+#include "wifi_screens.h"
 
 using namespace kit;
 
@@ -17,11 +18,43 @@ namespace ui {
 
 namespace {
 
-lv_obj_t *newScreen() {
-  lv_obj_t *s = lv_obj_create(nullptr);
-  lv_obj_set_style_bg_color(s, theme::bg(), 0);
-  lv_obj_remove_flag(s, LV_OBJ_FLAG_SCROLLABLE);
-  return s;
+// ---------------- where to go after the Wi-Fi picker ----------------
+//
+// While the picker is up, screens the network task asks for (glance,
+// pairing...) are remembered instead of shown, so a minute's refresh never
+// yanks the picker away mid-password. Closing it goes to the latest one.
+
+bool wifiOpen = false;
+lv_obj_t *afterWifi = nullptr;
+
+/** The screen the user is on, or will be once the picker closes. */
+lv_obj_t *current() { return wifiOpen ? afterWifi : lv_screen_active(); }
+
+void goTo(lv_obj_t *s) {
+  if (wifiOpen) {
+    afterWifi = s;
+  } else if (lv_screen_active() != s) {
+    lv_screen_load(s);
+  }
+}
+
+void openWifi(bool lost) {
+  if (!wifiOpen) {
+    afterWifi = lv_screen_active();
+    wifiOpen = true;
+  }
+  wifi_screens::open(lost);
+}
+
+void closeWifi() {
+  wifiOpen = false;
+  lv_screen_load(afterWifi);
+}
+
+/** Hold Gaby's face (on any screen she's on) to pick another Wi-Fi. */
+void holdForWifi(lv_obj_t *face) {
+  lv_obj_add_flag(face, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(face, [](lv_event_t *) { openWifi(false); }, LV_EVENT_LONG_PRESSED, nullptr);
 }
 
 // ---------------- connecting ----------------
@@ -30,15 +63,18 @@ lv_obj_t *connectScreen = nullptr;
 lv_obj_t *connectStatus = nullptr;
 
 void buildConnect() {
-  connectScreen = newScreen();
+  connectScreen = screen();
   lv_obj_t *face = gaby_face::create(connectScreen, 8, theme::bg());
   lv_obj_align(face, LV_ALIGN_TOP_MID, 0, 70);
+  holdForWifi(face);
   lv_obj_t *name = label(connectScreen, &lv_font_montserrat_40, theme::gold(), "Gaby");
   lv_obj_align(name, LV_ALIGN_TOP_MID, 0, 250);
   connectStatus = label(connectScreen, &lv_font_montserrat_20, theme::muted());
   lv_obj_set_width(connectStatus, W - 2 * M);
   lv_obj_set_style_text_align(connectStatus, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(connectStatus, LV_ALIGN_TOP_MID, 0, 310);
+  lv_obj_t *hint = label(connectScreen, &lv_font_montserrat_14, theme::muted(), "Hold my face to pick another Wi-Fi");
+  lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, -M);
 }
 
 // ---------------- pairing ----------------
@@ -87,10 +123,11 @@ void buildPair() {
                                      "4", "5", "6", "\n",
                                      "7", "8", "9", "\n",
                                      LV_SYMBOL_BACKSPACE, "0", LV_SYMBOL_OK, ""};
-  pairScreen = newScreen();
+  pairScreen = screen();
 
   lv_obj_t *face = gaby_face::create(pairScreen, 4, theme::bg());
   lv_obj_set_pos(face, M + 8, M);
+  holdForWifi(face);
   lv_obj_t *title = label(pairScreen, &lv_font_montserrat_28, theme::gold(), "Pair with KrugWorld");
   lv_obj_set_pos(title, 120, 24);
   lv_obj_t *hint = label(pairScreen, &lv_font_montserrat_14, theme::muted(),
@@ -293,7 +330,7 @@ void buildTalk() {
 }
 
 void buildGlance() {
-  glanceScreen = newScreen();
+  glanceScreen = screen();
 
   // Swipe left and right between Hero, Today and Purse.
   pages = lv_tileview_create(glanceScreen);
@@ -310,6 +347,7 @@ void buildGlance() {
   page_hero::build(tiles[0]);
   page_today::build(tiles[1]);
   page_purse::build(tiles[2]);
+  holdForWifi(page_hero::face());
 
   // Page dots between the pages and the talk bar.
   lv_obj_t *dotRow = lv_obj_create(glanceScreen);
@@ -339,18 +377,20 @@ void begin() {
   buildConnect();
   buildPair();
   buildGlance();
+  wifi_screens::build(closeWifi);
+  afterWifi = connectScreen;
 }
 
 void showConnecting(const char *ssid) {
   lv_label_set_text_fmt(connectStatus, "Connecting to %s...", ssid);
-  if (lv_screen_active() != glanceScreen) lv_screen_load(connectScreen);
+  if (current() != glanceScreen) goTo(connectScreen);
 }
 
 void showPairing() {
   code[0] = '\0';
   renderCode();
   lv_label_set_text(pairStatus, "");
-  lv_screen_load(pairScreen);
+  goTo(pairScreen);
 }
 
 void pairFailed(const char *why) {
@@ -372,14 +412,29 @@ void showSummary(const api::Summary &s) {
     snprintf(lastUpdate, sizeof(lastUpdate), "%02d:%02d", local.tm_hour, local.tm_min);
   }
   setOnline(true);
-  if (lv_screen_active() != glanceScreen) lv_screen_load(glanceScreen);
+  if (current() != glanceScreen) goTo(glanceScreen);
 }
 
 void setOnline(bool online, const char *why) {
   page_hero::setStatus(online, lastUpdate);
   // Before the first summary there's no glance screen to show it on.
-  if (!online && lv_screen_active() == connectScreen) lv_label_set_text(connectStatus, why);
+  if (!online && current() == connectScreen) lv_label_set_text(connectStatus, why);
 }
+
+void showWifi() { openWifi(true); }
+
+void wifiListChanged() { wifi_screens::listChanged(); }
+
+void wifiJoining(const char *ssid) { wifi_screens::joining(ssid); }
+
+void wifiJoined(const char *ssid) {
+  wifi_screens::joined();
+  Serial.printf("[gaby] on Wi-Fi %s\n", ssid);
+  lv_label_set_text_fmt(connectStatus, "On %s. Calling KrugWorld...", ssid);
+  if (wifiOpen) closeWifi();
+}
+
+void wifiFailed(const char *why) { wifi_screens::failed(why); }
 
 void clipRecorded(const uint8_t *wav, size_t size) {
   net::Job job{net::JobType::Voice};

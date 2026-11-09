@@ -11,6 +11,8 @@ constexpr int M = 16;           // outer margin
 constexpr int PAGE_H = 404;     // a swipe page: the screen minus dots and the talk bar
 constexpr int PAD = 12;         // inside every card: nothing touches the border
 
+/** A blank screen in the theme's background, not scrollable. */
+lv_obj_t *screen();
 lv_obj_t *label(lv_obj_t *parent, const lv_font_t *font, lv_color_t colour, const char *text = "");
 /** Small grey capitals that head a section. */
 lv_obj_t *caption(lv_obj_t *parent, int x, int y, const char *text);
