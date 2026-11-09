@@ -296,8 +296,10 @@ kept in your browser only and never reaches KrugWorld's server.
 ## Settings
 
 - **Skin**: *Classic Krugger* (the old Tavern exactly: pixel fonts, teal stone, square
-  borders, scanlines) or *KrugWorld* (Pirata One + Barlow Condensed) with four
-  backgrounds: Knight's steel (default), oak, forest, parchment.
+  borders, scanlines), *KrugWorld* (Pirata One + Barlow Condensed) with four backgrounds:
+  Knight's steel (default), oak, forest, parchment, or *Mirage*, the modern non-pixel look:
+  gradient backgrounds, glass panels, pill buttons and Plus Jakarta Sans, in Navy mirage
+  (default), Deep ocean, Royal dusk or Midnight rose.
 - **Recovery email**: needed to reset a forgotten passphrase by email.
 - **Desk Gaby**: make a pairing code, see and remove paired devices.
 - **Import from Krugger's Tavern**: one-off import of the old app's data.

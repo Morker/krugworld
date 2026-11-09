@@ -17,7 +17,7 @@ import {
 } from '../api/hooks'
 import type { Skin, Theme } from '../api/types'
 import { ErrorLine, Field, Panel } from '../components/ui'
-import { applySkin, THEMES } from '../skin/skin'
+import { applySkin, SKIN_THEMES, themeFor } from '../skin/skin'
 
 export function SettingsPage() {
   const me = useMe().data
@@ -25,10 +25,12 @@ export function SettingsPage() {
   const logout = useLogout()
   if (!me) return null
 
-  function choose(skin: Skin, theme: Theme = me!.theme) {
+  function choose(skin: Skin, theme: Theme = themeFor(skin, me!.theme)) {
     applySkin({ skin, theme }) // instant, before the server confirms
     save.mutate({ skin, theme })
   }
+
+  const themes = SKIN_THEMES[me.skin]
 
   return (
     <>
@@ -47,13 +49,15 @@ export function SettingsPage() {
                         title="Classic Krugger" text="Krugger's Tavern as it was: pixel fonts, teal stone, scanlines." />
             <SkinOption active={me.skin === 'modern'} onClick={() => choose('modern')}
                         title="KrugWorld" text="Pirata One and Barlow Condensed, with a background of your choosing." />
+            <SkinOption active={me.skin === 'mirage'} onClick={() => choose('mirage')}
+                        title="Mirage" text="Modern and smooth: gradient backgrounds, glass panels, clean type." />
           </div>
-          {me.skin === 'modern' && (
+          {themes.length > 0 && (
             <>
               <h2 style={{ marginTop: 16 }}>Background</h2>
               <div className="row-start wrap">
-                {THEMES.map((t) => (
-                  <button key={t.id} aria-pressed={me.theme === t.id} onClick={() => choose('modern', t.id)}
+                {themes.map((t) => (
+                  <button key={t.id} aria-pressed={me.theme === t.id} onClick={() => choose(me.skin, t.id)}
                           className={me.theme === t.id ? 'primary' : ''}>
                     <span style={{ width: 14, height: 14, borderRadius: '50%', background: t.swatch, border: '1px solid var(--line)' }} />
                     {t.name}
@@ -112,7 +116,7 @@ function EmailSettings() {
 
 function SkinOption({ active, title, text, onClick }: { active: boolean; title: string; text: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} aria-pressed={active}
+    <button className="tile" onClick={onClick} aria-pressed={active}
             style={{ textAlign: 'left', justifyContent: 'space-between', borderColor: active ? 'var(--accent)' : undefined }}>
       <span>
         <span className="display" style={{ display: 'block', fontSize: 'var(--fs-h2)' }}>{title}</span>

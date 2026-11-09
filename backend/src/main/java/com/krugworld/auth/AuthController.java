@@ -52,8 +52,8 @@ public class AuthController {
 
     /** Every field is optional: send only what changes. */
     public record PreferencesRequest(
-            @Pattern(regexp = "classic|modern") String skin,
-            @Pattern(regexp = "steel|oak|forest|parchment") String theme,
+            @Pattern(regexp = "classic|modern|mirage") String skin,
+            @Pattern(regexp = "steel|oak|forest|parchment|navy|ocean|dusk|rose") String theme,
             @Min(500) @Max(10000) Integer calorieGoal,
             @Pattern(regexp = "[CF]") String tempUnit,
             @Valid WeatherLocation weather,
